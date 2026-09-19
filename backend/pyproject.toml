@@ -1,0 +1,31 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    "*/migrations/*",
+    "venv",
+    ".venv",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle erreurs
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort (tri des imports)
+    "B",   # flake8-bugbear (bugs probables)
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade (syntaxe Python moderne)
+    "DJ",  # flake8-django
+]
+ignore = [
+    "E501",  # longueur de ligne : déléguée à `ruff format`
+]
+
+[tool.ruff.lint.per-file-ignores]
+"*/settings*.py" = ["F401", "F403"]  # imports wildcard/inutilisés fréquents en settings
+"tests/**/*.py" = ["F401"]           # fixtures/factories parfois importées pour effet de bord
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
