@@ -17,11 +17,12 @@ les autres lignes du fichier) grâce à une savepoint de transaction par ligne.
 """
 
 import datetime
+
 from django.db import transaction
 from django.utils import timezone
 
-from donnees.models import Lieu, Fabricant, Fournisseur, Adresse
-from equipement.models import Equipement, ModeleEquipement, FamilleEquipement, StatutEquipement
+from donnees.models import Adresse, Fabricant, Fournisseur, Lieu
+from equipement.models import Equipement, FamilleEquipement, ModeleEquipement, StatutEquipement
 from utilisateur.models import Utilisateur
 
 SHEET_LIEUX = "Lieux"
@@ -399,7 +400,8 @@ class EquipementImporter:
         statuts_valides = {choice[0] for choice in StatutEquipement.STATUTS_CHOICES}
 
         for row_number, row in self._rows(SHEET_EQUIPEMENTS):
-            def cell(i):
+
+            def cell(i, row=row):
                 return row[i] if len(row) > i else None
 
             reference = _normalize(cell(0))
@@ -449,10 +451,18 @@ class EquipementImporter:
             try:
                 with transaction.atomic():
                     lieu = self._get_or_create_lieu(lieu_nom)
-                    fabricant = self._get_or_create_fabricant(fabricant_nom) if fabricant_nom else None
-                    fournisseur = self._get_or_create_fournisseur(fournisseur_nom) if fournisseur_nom else None
+                    fabricant = (
+                        self._get_or_create_fabricant(fabricant_nom) if fabricant_nom else None
+                    )
+                    fournisseur = (
+                        self._get_or_create_fournisseur(fournisseur_nom)
+                        if fournisseur_nom
+                        else None
+                    )
                     famille = self._get_or_create_famille(famille_nom) if famille_nom else None
-                    modele = self._get_or_create_modele(modele_nom, fabricant) if modele_nom else None
+                    modele = (
+                        self._get_or_create_modele(modele_nom, fabricant) if modele_nom else None
+                    )
 
                     equipement = Equipement.objects.create(
                         reference=reference,
