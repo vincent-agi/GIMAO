@@ -51,7 +51,7 @@
             class="elevation-0"
             @click:row="(event, { item }) => $emit('row-click', item)"
           >
-            <template #item.quantite="{ item }">
+            <template #[`item.quantite`]="{ item }">
               <v-chip
                 size="small"
                 :color="getQuantiteColor(item.quantite, item.seuilStockFaible)"
@@ -114,7 +114,7 @@
 
         <v-card-text class="pa-4">
           <MagasinFilter
-            v-model:selectedMagasin="selectedMagasin"
+            v-model:selected-magasin="selectedMagasin"
             :magasins="magasins"
             :consommables="displayedConsommables"
             @edit:magasin="handleOpenEditMagasin"
@@ -125,16 +125,17 @@
         <v-divider />
 
         <v-card-actions class="pa-4">
-          <v-btn prepend-icon="mdi-plus" variant="text" color="primary" @click="handleCreateMagasin">
+          <v-btn
+            prepend-icon="mdi-plus"
+            variant="text"
+            color="primary"
+            @click="handleCreateMagasin"
+          >
             Ajouter un magasin
           </v-btn>
           <v-spacer />
-          <v-btn variant="outlined" @click="handleCancelFilter">
-            Réinitialiser
-          </v-btn>
-          <v-btn color="primary" variant="flat" @click="handleApplyFilter">
-            Fermer
-          </v-btn>
+          <v-btn variant="outlined" @click="handleCancelFilter"> Réinitialiser </v-btn>
+          <v-btn color="primary" variant="flat" @click="handleApplyFilter"> Fermer </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -164,233 +165,235 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
-import { useStore } from 'vuex';
-import MagasinFilter from '@/components/Stock/MagasinFilter.vue';
-import MagasinForm from '@/components/Forms/MagasinForm.vue';
-import StockStatistics from '@/components/Stock/StockStatistics.vue';
-import BTStockValidation from '@/components/Stock/BTStockValidation.vue';
-import ConfirmationModal from '@/components/common/ConfirmationModal.vue';
-import FloatingCreateButton from '@/components/common/FloatingCreateButton.vue';
-import ServerPaginationControls from '@/components/common/ServerPaginationControls.vue';
-import { useApi } from '@/composables/useApi';
-import { usePaginatedList } from '@/composables/usePaginatedList';
-import { API_BASE_URL } from '@/utils/constants';
+  import { computed, onMounted, ref } from 'vue'
+  import { useStore } from 'vuex'
+  import MagasinFilter from '@/components/Stock/MagasinFilter.vue'
+  import MagasinForm from '@/components/Forms/MagasinForm.vue'
+  import StockStatistics from '@/components/Stock/StockStatistics.vue'
+  import BTStockValidation from '@/components/Stock/BTStockValidation.vue'
+  import ConfirmationModal from '@/components/common/ConfirmationModal.vue'
+  import FloatingCreateButton from '@/components/common/FloatingCreateButton.vue'
+  import ServerPaginationControls from '@/components/common/ServerPaginationControls.vue'
+  import { useApi } from '@/composables/useApi'
+  import { usePaginatedList } from '@/composables/usePaginatedList'
+  import { API_BASE_URL } from '@/utils/constants'
 
-const props = defineProps({
-  title: {
-    type: String,
-    default: 'Liste des consommables',
-  },
-  createButtonText: {
-    type: String,
-    default: 'Ajouter un consommable',
-  },
-  noDataText: {
-    type: String,
-    default: 'Aucun consommable trouvé',
-  },
-});
+  defineProps({
+    title: {
+      type: String,
+      default: 'Liste des consommables',
+    },
+    createButtonText: {
+      type: String,
+      default: 'Ajouter un consommable',
+    },
+    noDataText: {
+      type: String,
+      default: 'Aucun consommable trouvé',
+    },
+  })
 
-const emit = defineEmits(['create', 'row-click', 'consommables-loaded']);
+  const emit = defineEmits(['create', 'row-click', 'consommables-loaded'])
 
-const consommablesApi = useApi(API_BASE_URL);
-const magasinsApi = useApi(API_BASE_URL);
-const archiveApi = useApi(API_BASE_URL);
-const store = useStore();
+  const consommablesApi = useApi(API_BASE_URL)
+  const magasinsApi = useApi(API_BASE_URL)
+  const archiveApi = useApi(API_BASE_URL)
+  const store = useStore()
 
-const errorMessage = ref('');
-const selectedMagasin = ref(null);
-const selectedStockFilter = ref(null);
-const showMagasinFilterDialog = ref(false);
-const showMagasinFormDialog = ref(false);
-const showArchiveDialog = ref(false);
-const magasinToEdit = ref(null);
-const magasinToArchive = ref(null);
-const btPendingCount = ref(0);
-const btCompletedCount = ref(0);
-const btStockValidationRef = ref(null);
-const archiving = ref(false);
+  const errorMessage = ref('')
+  const selectedMagasin = ref(null)
+  const selectedStockFilter = ref(null)
+  const showMagasinFilterDialog = ref(false)
+  const showMagasinFormDialog = ref(false)
+  const showArchiveDialog = ref(false)
+  const magasinToEdit = ref(null)
+  const magasinToArchive = ref(null)
+  const btPendingCount = ref(0)
+  const btCompletedCount = ref(0)
+  const btStockValidationRef = ref(null)
+  const archiving = ref(false)
 
-const magasins = computed(() => magasinsApi.data.value || []);
-const showCreateButton = computed(() => store.getters.hasPermission('cons:create'));
+  const magasins = computed(() => magasinsApi.data.value || [])
+  const showCreateButton = computed(() => store.getters.hasPermission('cons:create'))
 
-const tableHeaders = [
-  { title: 'Nom', key: 'designation', sortable: true },
-  { title: 'Magasin', key: 'magasin_nom' },
-  { title: 'Quantité', key: 'quantite', sortable: true, align: 'center' },
-];
+  const tableHeaders = [
+    { title: 'Nom', key: 'designation', sortable: true },
+    { title: 'Magasin', key: 'magasin_nom' },
+    { title: 'Quantité', key: 'quantite', sortable: true, align: 'center' },
+  ]
 
-const {
-  items,
-  currentPage,
-  pageSize,
-  totalItems,
-  totalPages,
-  searchQuery,
-  loading,
-  extra,
-  fetchPage,
-  handleSearch,
-} = usePaginatedList({
-  api: consommablesApi,
-  endpoint: 'consommables/',
-  initialPageSize: 10,
-  buildParams: () => ({
-    magasin_id: selectedMagasin.value ?? undefined,
-    stock_status: selectedStockFilter.value ?? undefined,
-  }),
-  watchSource: () => [selectedMagasin.value ?? '', selectedStockFilter.value ?? ''],
-  onFetched: (_response, normalized) => {
-    emit('consommables-loaded', normalized.items);
-  },
-});
+  const {
+    items,
+    currentPage,
+    pageSize,
+    totalItems,
+    totalPages,
+    searchQuery,
+    loading,
+    extra,
+    fetchPage,
+    handleSearch,
+  } = usePaginatedList({
+    api: consommablesApi,
+    endpoint: 'consommables/',
+    initialPageSize: 10,
+    buildParams: () => ({
+      magasin_id: selectedMagasin.value ?? undefined,
+      stock_status: selectedStockFilter.value ?? undefined,
+    }),
+    watchSource: () => [selectedMagasin.value ?? '', selectedStockFilter.value ?? ''],
+    onFetched: (_response, normalized) => {
+      emit('consommables-loaded', normalized.items)
+    },
+  })
 
-const searchInput = computed({
-  get: () => searchQuery.value,
-  set: (value) => handleSearch(value),
-});
+  const searchInput = computed({
+    get: () => searchQuery.value,
+    set: (value) => handleSearch(value),
+  })
 
-const stockSummary = computed(() => extra.value?.summary || null);
+  const stockSummary = computed(() => extra.value?.summary || null)
 
-const displayedConsommables = computed(() =>
-  items.value.map((consommable) => {
-    let quantite = consommable.quantite_totale ?? 0;
+  const displayedConsommables = computed(() =>
+    items.value.map((consommable) => {
+      let quantite = consommable.quantite_totale ?? 0
 
-    if (selectedMagasin.value !== null) {
-      const stock = (consommable.stocks || []).find((item) => item.magasin === selectedMagasin.value);
-      quantite = stock ? stock.quantite : 0;
+      if (selectedMagasin.value !== null) {
+        const stock = (consommable.stocks || []).find(
+          (item) => item.magasin === selectedMagasin.value
+        )
+        quantite = stock ? stock.quantite : 0
+      }
+
+      const magasinNom = [
+        ...new Set((consommable.stocks || []).map((stock) => stock.magasin_nom).filter(Boolean)),
+      ].join(', ')
+
+      return {
+        ...consommable,
+        quantite,
+        magasin_nom: magasinNom || '-',
+      }
+    })
+  )
+
+  const currentSubtitle = computed(() => {
+    if (selectedMagasin.value === null) {
+      return `${totalItems.value} consommable(s) au total`
     }
 
-    const magasinNom = [...new Set(
-      (consommable.stocks || [])
-        .map((stock) => stock.magasin_nom)
-        .filter(Boolean),
-    )].join(', ');
+    const magasin = magasins.value.find((item) => item.id === selectedMagasin.value)
+    return magasin ? `Magasin : ${magasin.nom} - ${totalItems.value} consommable(s)` : ''
+  })
 
-    return {
-      ...consommable,
-      quantite,
-      magasin_nom: magasinNom || '-',
-    };
-  }),
-);
-
-const currentSubtitle = computed(() => {
-  if (selectedMagasin.value === null) {
-    return `${totalItems.value} consommable(s) au total`;
+  const getQuantiteColor = (quantite, seuil) => {
+    if (quantite === 0) return 'error'
+    if (seuil !== null && seuil !== undefined && quantite <= seuil) return 'warning'
+    return 'success'
   }
 
-  const magasin = magasins.value.find((item) => item.id === selectedMagasin.value);
-  return magasin ? `Magasin : ${magasin.nom} - ${totalItems.value} consommable(s)` : '';
-});
-
-const getQuantiteColor = (quantite, seuil) => {
-  if (quantite === 0) return 'error';
-  if (seuil !== null && seuil !== undefined && quantite <= seuil) return 'warning';
-  return 'success';
-};
-
-const fetchMagasins = async () => {
-  try {
-    await magasinsApi.get('magasins/');
-  } catch (error) {
-    errorMessage.value = 'Erreur lors du chargement des magasins';
-  }
-};
-
-const fetchData = async () => {
-  await Promise.allSettled([fetchPage(), fetchMagasins()]);
-};
-
-const handleApplyFilter = () => {
-  showMagasinFilterDialog.value = false;
-};
-
-const handleCreateMagasin = () => {
-  magasinToEdit.value = null;
-  showMagasinFormDialog.value = true;
-};
-
-const handleOpenEditMagasin = (magasin) => {
-  magasinToEdit.value = magasin;
-  showMagasinFormDialog.value = true;
-};
-
-const handleOpenArchiveMagasin = (magasin) => {
-  magasinToArchive.value = magasin;
-  showArchiveDialog.value = true;
-};
-
-const handleMagasinCreated = async () => {
-  await fetchData();
-  showMagasinFormDialog.value = false;
-};
-
-const handleMagasinUpdated = async () => {
-  await fetchData();
-  showMagasinFormDialog.value = false;
-};
-
-const handleCancelArchive = () => {
-  showArchiveDialog.value = false;
-  magasinToArchive.value = null;
-};
-
-const archiveMagasin = async () => {
-  if (!magasinToArchive.value?.id) {
-    showArchiveDialog.value = false;
-    return;
+  const fetchMagasins = async () => {
+    try {
+      await magasinsApi.get('magasins/')
+    } catch {
+      errorMessage.value = 'Erreur lors du chargement des magasins'
+    }
   }
 
-  archiving.value = true;
+  const fetchData = async () => {
+    await Promise.allSettled([fetchPage(), fetchMagasins()])
+  }
 
-  try {
-    await archiveApi.patch(`magasins/${magasinToArchive.value.id}/set-archive/`, { archive: true });
-    await fetchData();
+  const handleApplyFilter = () => {
+    showMagasinFilterDialog.value = false
+  }
 
-    if (selectedMagasin.value === magasinToArchive.value.id) {
-      selectedMagasin.value = null;
+  const handleCreateMagasin = () => {
+    magasinToEdit.value = null
+    showMagasinFormDialog.value = true
+  }
+
+  const handleOpenEditMagasin = (magasin) => {
+    magasinToEdit.value = magasin
+    showMagasinFormDialog.value = true
+  }
+
+  const handleOpenArchiveMagasin = (magasin) => {
+    magasinToArchive.value = magasin
+    showArchiveDialog.value = true
+  }
+
+  const handleMagasinCreated = async () => {
+    await fetchData()
+    showMagasinFormDialog.value = false
+  }
+
+  const handleMagasinUpdated = async () => {
+    await fetchData()
+    showMagasinFormDialog.value = false
+  }
+
+  const handleCancelArchive = () => {
+    showArchiveDialog.value = false
+    magasinToArchive.value = null
+  }
+
+  const archiveMagasin = async () => {
+    if (!magasinToArchive.value?.id) {
+      showArchiveDialog.value = false
+      return
     }
 
-    showArchiveDialog.value = false;
-  } catch (error) {
-    errorMessage.value = 'Erreur lors de l\'archivage du magasin';
-  } finally {
-    archiving.value = false;
-    magasinToArchive.value = null;
+    archiving.value = true
+
+    try {
+      await archiveApi.patch(`magasins/${magasinToArchive.value.id}/set-archive/`, {
+        archive: true,
+      })
+      await fetchData()
+
+      if (selectedMagasin.value === magasinToArchive.value.id) {
+        selectedMagasin.value = null
+      }
+
+      showArchiveDialog.value = false
+    } catch {
+      errorMessage.value = "Erreur lors de l'archivage du magasin"
+    } finally {
+      archiving.value = false
+      magasinToArchive.value = null
+    }
   }
-};
 
-const handleCancelFilter = () => {
-  selectedMagasin.value = null;
-  showMagasinFilterDialog.value = false;
-};
+  const handleCancelFilter = () => {
+    selectedMagasin.value = null
+    showMagasinFilterDialog.value = false
+  }
 
-const handleBtCountsUpdated = ({ pending, completed, reserved }) => {
-  btPendingCount.value = pending ?? 0;
-  btCompletedCount.value = (reserved ?? completed) ?? 0;
-};
+  const handleBtCountsUpdated = ({ pending, completed, reserved }) => {
+    btPendingCount.value = pending ?? 0
+    btCompletedCount.value = reserved ?? completed ?? 0
+  }
 
-const handleStockUpdated = async () => {
-  await fetchPage();
-};
+  const handleStockUpdated = async () => {
+    await fetchPage()
+  }
 
-onMounted(() => {
-  fetchData();
-});
+  onMounted(() => {
+    fetchData()
+  })
 </script>
 
 <style scoped>
-.filter-btn {
-  background-color: #F1F5FF !important;
-  color: #05004E !important;
-  text-transform: none !important;
-  font-weight: 500;
-  letter-spacing: normal !important;
-}
+  .filter-btn {
+    background-color: #f1f5ff !important;
+    color: #05004e !important;
+    text-transform: none !important;
+    font-weight: 500;
+    letter-spacing: normal !important;
+  }
 
-.filter-btn:hover {
-  background-color: #E4EBFF !important;
-}
+  .filter-btn:hover {
+    background-color: #e4ebff !important;
+  }
 </style>
