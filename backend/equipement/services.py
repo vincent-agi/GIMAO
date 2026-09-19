@@ -109,6 +109,25 @@ def date_to_ordinal_days(date_str: str | None) -> int:
         return 0
 
 
+def ordinal_days_to_date(days: int) -> datetime.date:
+    """Inverse exact de ``date_to_ordinal_days`` : jours depuis 0001-01-01 -> date.
+
+    Attention : ``datetime.date.fromordinal()`` n'est *pas* l'inverse de
+    cette fonction (``fromordinal`` est 1-indexe : ``fromordinal(1) ==
+    date(1, 1, 1)``, alors que ``date_to_ordinal_days("0001-01-01") == 0``).
+    Utiliser cette fonction, pas ``fromordinal``, pour reconvertir une
+    valeur produite par ``date_to_ordinal_days`` (cf. ``Compteur.valeurCourante``
+    / ``Declencher.prochaineMaintenance`` pour un compteur ``Calendaire``).
+
+    Args:
+        days: Nombre de jours depuis le 1er janvier de l'an 1 (0 = 0001-01-01).
+
+    Returns:
+        La date correspondante.
+    """
+    return (datetime.datetime(1, 1, 1) + datetime.timedelta(days=days)).date()
+
+
 def create_declencher_for_plan(
     compteur: Compteur, plan: PlanMaintenance, seuil_data: dict
 ) -> Declencher:

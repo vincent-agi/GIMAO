@@ -234,4 +234,5 @@ CRONJOBS = [
     ("0 3 * * *", "tasks.counterCron.update_counter"),
     ("0 0 * * *", "tasks.updateCalendarDates.update_calendar_counters"),
     ("0 0 * * *", "tasks.deletedExpiredTokens.delete_useless_tokens"),
+    ("0 6 * * *", "tasks.checkCtEcheances.check_ct_echeances"),
 ]
