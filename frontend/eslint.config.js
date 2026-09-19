@@ -16,6 +16,8 @@ export default [
         process: 'readonly',
         localStorage: 'readonly',
         fetch: 'readonly',
+        // require() fonctionne à l'exécution via le bundler webpack (vue-cli).
+        require: 'readonly',
       },
     },
     rules: {
@@ -34,6 +36,27 @@ export default [
         vi: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
+        global: 'writable',
+      },
+    },
+  },
+  {
+    files: ['vue.config.js', 'babel.config.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        require: 'readonly',
+        module: 'writable',
+        process: 'readonly',
+      },
+    },
+  },
+  {
+    // Config Vite : ESM, mais __dirname reste injecté par le loader vite-node.
+    files: ['vitest.config.js'],
+    languageOptions: {
+      globals: {
+        __dirname: 'readonly',
       },
     },
   },
