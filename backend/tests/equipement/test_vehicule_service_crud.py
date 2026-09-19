@@ -3,10 +3,10 @@
 from types import SimpleNamespace
 
 import pytest
+from django.core.exceptions import ValidationError
 
 from equipement import services
 from equipement.models import Equipement, VehiculeProfile
-
 from tests.factories import (
     FamilleEquipementFactory,
     FournisseurFactory,
@@ -61,7 +61,7 @@ class TestCreateVehicule:
         utilisateur = UtilisateurFactory()
         data = base_vehicule_data(vin="TROP_COURT")
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             services.create_vehicule(data, {}, authenticated_request_user(utilisateur))
 
         assert not Equipement.objects.filter(reference="REF-VEH-001").exists()
@@ -75,7 +75,9 @@ class TestCreateVehicule:
 
 class TestUpdateVehicule:
     def _create_vehicule(self, utilisateur):
-        return services.create_vehicule(base_vehicule_data(), {}, authenticated_request_user(utilisateur))
+        return services.create_vehicule(
+            base_vehicule_data(), {}, authenticated_request_user(utilisateur)
+        )
 
     def test_should_update_equipement_field(self):
         utilisateur = UtilisateurFactory()
@@ -118,5 +120,5 @@ class TestUpdateVehicule:
         utilisateur = UtilisateurFactory()
         equipement = self._create_vehicule(utilisateur)
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             services.update_vehicule(equipement, {"immatriculation": {"nouvelle": "invalide"}}, {})

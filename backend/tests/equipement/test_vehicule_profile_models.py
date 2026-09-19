@@ -2,9 +2,9 @@
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 
 from equipement.models import Equipement, VehiculeProfile
-
 from tests.factories import EquipementFactory
 
 pytestmark = pytest.mark.django_db
@@ -61,13 +61,13 @@ class TestVehiculeProfileCreation:
     def test_should_reject_duplicate_vin(self):
         make_vehicule_profile(vin="VF1BB000000000002", immatriculation="AA-111-AA").save()
 
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             make_vehicule_profile(vin="VF1BB000000000002", immatriculation="BB-222-BB").save()
 
     def test_should_reject_duplicate_immatriculation(self):
         make_vehicule_profile(vin="VF1BB000000000003", immatriculation="CC-333-CC").save()
 
-        with pytest.raises(Exception):
+        with pytest.raises(IntegrityError):
             make_vehicule_profile(vin="VF1BB000000000004", immatriculation="CC-333-CC").save()
 
 
@@ -85,4 +85,4 @@ class TestVehiculeProfileCascade:
         equipement = EquipementFactory(type="MECANIQUE")
 
         with pytest.raises(Equipement.vehicule_profile.RelatedObjectDoesNotExist):
-            equipement.vehicule_profile
+            _ = equipement.vehicule_profile
