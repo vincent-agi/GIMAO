@@ -7,8 +7,9 @@ Ce depot utilise [semantic-release](https://semantic-release.gitbook.io/) pour a
 - la creation de la Release GitHub,
 - la fermeture des issues/PR et du Milestone lies au commit.
 
-Le pipeline se declenche automatiquement sur `main`, apres succes du workflow `Tests`
-(`.github/workflows/tests.yml`). Voir `.github/workflows/release.yml` et `.releaserc.json`.
+Le pipeline se declenche automatiquement sur `main`, apres succes du workflow `CI`
+(`.github/workflows/ci.yml` : lint, tests, couverture, audit de securite). Voir
+`.github/workflows/release.yml` et `.releaserc.json`.
 
 ## Convention de commit (Conventional Commits)
 
@@ -55,8 +56,9 @@ Pour le Milestone : nommer le Milestone GitHub exactement comme la version produ
 ## Fonctionnement du pipeline automatique
 
 1. Push/merge sur `main`.
-2. Le workflow `Tests` (`tests.yml`) tourne (backend pytest + frontend vitest).
-3. Si `Tests` reussit, le workflow `Release` (`release.yml`) se declenche via `workflow_run`.
+2. Le workflow `CI` (`ci.yml`) tourne : lint (Ruff, ESLint/Prettier), tests
+   (pytest, Vitest) avec couverture, audit de securite/SBOM.
+3. Si `CI` reussit, le workflow `Release` (`release.yml`) se declenche via `workflow_run`.
 4. `semantic-release` (`npx semantic-release`) :
    - analyse l'historique des commits depuis la derniere release (`commit-analyzer`),
    - determine le prochain numero de version,
@@ -66,7 +68,7 @@ Pour le Milestone : nommer le Milestone GitHub exactement comme la version produ
      correspondant (`github`),
    - commite `CHANGELOG.md` sur `main` avec le message
      `:bookmark: chore(release): ${nextRelease.version} [skip ci]` (`git`).
-5. Le `[skip ci]` evite de redeclencher `Tests`/`Release` sur ce commit de release.
+5. Le `[skip ci]` evite de redeclencher `CI`/`Release` sur ce commit de release.
 
 Si aucun commit eligible (`feat`/`fix`/`BREAKING CHANGE`) n'est trouve depuis la derniere
 release, `semantic-release` ne publie rien (comportement normal, pas une erreur).

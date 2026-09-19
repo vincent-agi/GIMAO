@@ -1,10 +1,10 @@
 name: Release
 
-# Se declenche uniquement apres succes du workflow "Tests" sur la branche main.
-# Evite de publier une release si les tests backend/frontend echouent.
+# Se declenche uniquement apres succes du workflow "CI" sur la branche main
+# (lint, tests backend/frontend, couverture, audit de securite).
 on:
   workflow_run:
-    workflows: ["Tests"]
+    workflows: ["CI"]
     types: [completed]
     branches: [main]
 
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   release:
-    # Ne tourne que si le workflow "Tests" declencheur s'est termine avec succes.
+    # Ne tourne que si le workflow "CI" declencheur s'est termine avec succes.
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
