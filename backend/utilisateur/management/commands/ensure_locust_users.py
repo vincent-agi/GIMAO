@@ -4,7 +4,6 @@ from django.core.management.base import BaseCommand
 
 from utilisateur.models import Role, Utilisateur
 
-
 ROLE_CONFIGS = [
     {
         "role_name": "Responsable GMAO",
@@ -44,9 +43,7 @@ class Command(BaseCommand):
         password = os.getenv("LOCUST_PASSWORD", "locust123").strip()
         if not password:
             self.stdout.write(
-                self.style.WARNING(
-                    "LOCUST_PASSWORD is empty; skipping Locust user provisioning."
-                )
+                self.style.WARNING("LOCUST_PASSWORD is empty; skipping Locust user provisioning.")
             )
             return
 
@@ -67,9 +64,7 @@ class Command(BaseCommand):
                 role = Role.objects.get(nomRole=config["role_name"])
             except Role.DoesNotExist:
                 self.stdout.write(
-                    self.style.WARNING(
-                        f"Role '{config['role_name']}' does not exist; skipping."
-                    )
+                    self.style.WARNING(f"Role '{config['role_name']}' does not exist; skipping.")
                 )
                 continue
 
@@ -110,7 +105,5 @@ class Command(BaseCommand):
 
             action = "created" if created else "updated"
             self.stdout.write(
-                self.style.SUCCESS(
-                    f"Locust user {username} ({config['role_name']}) {action}."
-                )
+                self.style.SUCCESS(f"Locust user {username} ({config['role_name']}) {action}.")
             )

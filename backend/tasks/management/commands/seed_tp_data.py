@@ -11,11 +11,12 @@ Docker :
     docker compose -f docker-compose.prod.yml exec backend python manage.py seed_tp_data
 """
 
+import random
+from datetime import timedelta
+
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
-from datetime import timedelta
-import random
 
 
 class Command(BaseCommand):
@@ -23,9 +24,9 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--flush',
-            action='store_true',
-            help='Supprime toutes les données existantes avant le seed (défaut : oui)',
+            "--flush",
+            action="store_true",
+            help="Supprime toutes les données existantes avant le seed (défaut : oui)",
         )
 
     def handle(self, *args, **options):
@@ -37,7 +38,8 @@ class Command(BaseCommand):
         # create_initial_data() crée un "responsable" sans mot de passe — on le supprime
         # pour que _create_users() puisse créer le compte complet
         from utilisateur.models import Utilisateur
-        Utilisateur.objects.filter(nomUtilisateur='responsable').delete()
+
+        Utilisateur.objects.filter(nomUtilisateur="responsable").delete()
 
         self.stdout.write("Création des données TP...")
         with transaction.atomic():
@@ -49,32 +51,58 @@ class Command(BaseCommand):
     # 1. FLUSH
     # ------------------------------------------------------------------
     def _flush_data(self):
-        from security.models import ApiToken
-        from maintenance.models import (
-            BonTravailConsommable, BonTravailDocument,
-            DemandeInterventionDocument, PlanMaintenanceConsommable,
-            PlanMaintenanceDocument, BonTravail, DemandeIntervention,
-            PlanMaintenance,
-        )
+        from donnees.models import Adresse, Document, Fabricant, Fournisseur, Lieu
         from equipement.models import (
-            Constituer, DocumentEquipement, Declencher,
-            StatutEquipement, Compteur, Equipement,
-            ModeleEquipement, FamilleEquipement,
+            Compteur,
+            Constituer,
+            Declencher,
+            DocumentEquipement,
+            Equipement,
+            FamilleEquipement,
+            ModeleEquipement,
+            StatutEquipement,
         )
-        from stock.models import EstCompatible, Stocker, PorterSur, Consommable, Magasin
-        from donnees.models import Document, Fabricant, Fournisseur, Lieu, Adresse
-        from utilisateur.models import Log, UtilisateurPermission, Utilisateur
+        from maintenance.models import (
+            BonTravail,
+            BonTravailConsommable,
+            BonTravailDocument,
+            DemandeIntervention,
+            DemandeInterventionDocument,
+            PlanMaintenance,
+            PlanMaintenanceConsommable,
+            PlanMaintenanceDocument,
+        )
+        from security.models import ApiToken
+        from stock.models import Consommable, EstCompatible, Magasin, PorterSur, Stocker
+        from utilisateur.models import Log, Utilisateur, UtilisateurPermission
 
         models_to_flush = [
-            ApiToken, Log,
-            BonTravailConsommable, BonTravailDocument,
-            DemandeInterventionDocument, PlanMaintenanceConsommable, PlanMaintenanceDocument,
-            BonTravail, DemandeIntervention, PlanMaintenance,
-            Constituer, DocumentEquipement, Declencher,
-            StatutEquipement, Compteur, Equipement,
-            ModeleEquipement, FamilleEquipement,
-            EstCompatible, Stocker, PorterSur, Consommable, Magasin,
-            Document, Fabricant, Fournisseur,
+            ApiToken,
+            Log,
+            BonTravailConsommable,
+            BonTravailDocument,
+            DemandeInterventionDocument,
+            PlanMaintenanceConsommable,
+            PlanMaintenanceDocument,
+            BonTravail,
+            DemandeIntervention,
+            PlanMaintenance,
+            Constituer,
+            DocumentEquipement,
+            Declencher,
+            StatutEquipement,
+            Compteur,
+            Equipement,
+            ModeleEquipement,
+            FamilleEquipement,
+            EstCompatible,
+            Stocker,
+            PorterSur,
+            Consommable,
+            Magasin,
+            Document,
+            Fabricant,
+            Fournisseur,
             Lieu,
             UtilisateurPermission,
             Utilisateur,
@@ -93,11 +121,12 @@ class Command(BaseCommand):
     # ------------------------------------------------------------------
     def _init_reference_data(self):
         from tasks.create_initial_data import create_initial_data
+
         create_initial_data()
 
         # Créer le rôle "Technicien maintenance" avec les mêmes permissions que "Technicien"
-        from utilisateur.models import Role, RolePermission, Permission
         from tasks import perms_data
+        from utilisateur.models import Permission, Role, RolePermission
 
         tech_maint, created = Role.objects.get_or_create(nomRole="Technicien maintenance")
         if created:
@@ -125,24 +154,31 @@ class Command(BaseCommand):
     # UTILISATEURS
     # ------------------------------------------------------------------
     def _create_users(self):
-        from utilisateur.models import Utilisateur, Role
+        from utilisateur.models import Role, Utilisateur
 
-        role_resp   = Role.objects.get(nomRole="Responsable GMAO")
-        role_tech   = Role.objects.get(nomRole="Technicien prod")
-        role_tm     = Role.objects.get(nomRole="Technicien maintenance")
-        role_op     = Role.objects.get(nomRole="Opérateur prod")
-        role_mag    = Role.objects.get(nomRole="Magasinier")
+        role_resp = Role.objects.get(nomRole="Responsable GMAO")
+        role_tech = Role.objects.get(nomRole="Technicien prod")
+        role_tm = Role.objects.get(nomRole="Technicien maintenance")
+        role_op = Role.objects.get(nomRole="Opérateur prod")
+        role_mag = Role.objects.get(nomRole="Magasinier")
 
         users_data = [
             # (nomUtilisateur, prenom, nomFamille, email, role, password)
-            ("responsable.gmao", "Responsable", "GMAO", "responsable.gmao@gimao.fr", role_resp, "Responsable1!"),
-            ("t.martin",    "Thomas",   "Martin",    "t.martin@gimao.fr",    role_tech, "Technicien1!"),
-            ("a.bernard",   "Alice",    "Bernard",   "a.bernard@gimao.fr",   role_tech, "Technicien1!"),
-            ("l.moreau",    "Lucas",    "Moreau",    "l.moreau@gimao.fr",    role_tm,   "Technicien1!"),
-            ("c.camille",   "Camille", "camille",  "c.camille@gimao.fr",     role_tm,   "Technicien1!"),
-            ("o.durand",    "Olivier",  "Durand",    "o.durand@gimao.fr",    role_op,   "Operateur1!"),
-            ("s.leroy",     "Sophie",   "Leroy",     "s.leroy@gimao.fr",     role_op,   "Operateur1!"),
-            ("mag.simon",   "Pierre",   "Simon",     "p.simon@gimao.fr",     role_mag,  "Magasinier1!"),
+            (
+                "responsable.gmao",
+                "Responsable",
+                "GMAO",
+                "responsable.gmao@gimao.fr",
+                role_resp,
+                "Responsable1!",
+            ),
+            ("t.martin", "Thomas", "Martin", "t.martin@gimao.fr", role_tech, "Technicien1!"),
+            ("a.bernard", "Alice", "Bernard", "a.bernard@gimao.fr", role_tech, "Technicien1!"),
+            ("l.moreau", "Lucas", "Moreau", "l.moreau@gimao.fr", role_tm, "Technicien1!"),
+            ("c.camille", "Camille", "camille", "c.camille@gimao.fr", role_tm, "Technicien1!"),
+            ("o.durand", "Olivier", "Durand", "o.durand@gimao.fr", role_op, "Operateur1!"),
+            ("s.leroy", "Sophie", "Leroy", "s.leroy@gimao.fr", role_op, "Operateur1!"),
+            ("mag.simon", "Pierre", "Simon", "p.simon@gimao.fr", role_mag, "Magasinier1!"),
         ]
 
         self.users = {}
@@ -168,18 +204,38 @@ class Command(BaseCommand):
         from donnees.models import Lieu
 
         site = Lieu.objects.create(nomLieu="Site Industriel Nord", typeLieu="Site")
-        bat_a = Lieu.objects.create(nomLieu="Bâtiment A - Production", typeLieu="Bâtiment", lieuParent=site)
-        bat_b = Lieu.objects.create(nomLieu="Bâtiment B - Maintenance", typeLieu="Bâtiment", lieuParent=site)
-        bat_c = Lieu.objects.create(nomLieu="Bâtiment C - Stockage", typeLieu="Bâtiment", lieuParent=site)
+        bat_a = Lieu.objects.create(
+            nomLieu="Bâtiment A - Production", typeLieu="Bâtiment", lieuParent=site
+        )
+        bat_b = Lieu.objects.create(
+            nomLieu="Bâtiment B - Maintenance", typeLieu="Bâtiment", lieuParent=site
+        )
+        bat_c = Lieu.objects.create(
+            nomLieu="Bâtiment C - Stockage", typeLieu="Bâtiment", lieuParent=site
+        )
 
         self.lieux = {
-            "atelier_prod":  Lieu.objects.create(nomLieu="Atelier Production",   typeLieu="Salle", lieuParent=bat_a),
-            "salle_chaud":   Lieu.objects.create(nomLieu="Salle Chaudronnerie",  typeLieu="Salle", lieuParent=bat_a),
-            "local_elec":    Lieu.objects.create(nomLieu="Local Électrique",     typeLieu="Local", lieuParent=bat_a),
-            "atelier_maint": Lieu.objects.create(nomLieu="Atelier Maintenance",  typeLieu="Salle", lieuParent=bat_b),
-            "bureau_resp":   Lieu.objects.create(nomLieu="Bureau Responsable",   typeLieu="Bureau", lieuParent=bat_b),
-            "magasin_pces":  Lieu.objects.create(nomLieu="Magasin Pièces",       typeLieu="Entrepôt", lieuParent=bat_c),
-            "zone_stock":    Lieu.objects.create(nomLieu="Zone Stockage Général", typeLieu="Entrepôt", lieuParent=bat_c),
+            "atelier_prod": Lieu.objects.create(
+                nomLieu="Atelier Production", typeLieu="Salle", lieuParent=bat_a
+            ),
+            "salle_chaud": Lieu.objects.create(
+                nomLieu="Salle Chaudronnerie", typeLieu="Salle", lieuParent=bat_a
+            ),
+            "local_elec": Lieu.objects.create(
+                nomLieu="Local Électrique", typeLieu="Local", lieuParent=bat_a
+            ),
+            "atelier_maint": Lieu.objects.create(
+                nomLieu="Atelier Maintenance", typeLieu="Salle", lieuParent=bat_b
+            ),
+            "bureau_resp": Lieu.objects.create(
+                nomLieu="Bureau Responsable", typeLieu="Bureau", lieuParent=bat_b
+            ),
+            "magasin_pces": Lieu.objects.create(
+                nomLieu="Magasin Pièces", typeLieu="Entrepôt", lieuParent=bat_c
+            ),
+            "zone_stock": Lieu.objects.create(
+                nomLieu="Zone Stockage Général", typeLieu="Entrepôt", lieuParent=bat_c
+            ),
         }
         self.stdout.write(f"  {Lieu.objects.count()} lieux créés")
 
@@ -187,11 +243,12 @@ class Command(BaseCommand):
     # FABRICANTS & FOURNISSEURS
     # ------------------------------------------------------------------
     def _create_fabricants_fournisseurs(self):
-        from donnees.models import Fabricant, Fournisseur, Adresse
+        from donnees.models import Adresse, Fabricant, Fournisseur
 
         def make_adresse(num, rue, ville, cp, pays):
-            return Adresse.objects.create(numero=num, rue=rue, ville=ville,
-                                          code_postal=cp, pays=pays)
+            return Adresse.objects.create(
+                numero=num, rue=rue, ville=ville, code_postal=cp, pays=pays
+            )
 
         self.fabricants = {
             "siemens": Fabricant.objects.create(
@@ -199,14 +256,18 @@ class Command(BaseCommand):
                 email="contact@siemens.com",
                 numTelephone="+49 89 636 00",
                 serviceApresVente=True,
-                adresse=make_adresse("80", "Werner-von-Siemens-Str.", "Munich", "80333", "Allemagne"),
+                adresse=make_adresse(
+                    "80", "Werner-von-Siemens-Str.", "Munich", "80333", "Allemagne"
+                ),
             ),
             "schneider": Fabricant.objects.create(
                 nom="Schneider Electric",
                 email="contact@schneider-electric.com",
                 numTelephone="+33 1 41 29 70 00",
                 serviceApresVente=True,
-                adresse=make_adresse("35", "Rue Joseph Monier", "Rueil-Malmaison", "92500", "France"),
+                adresse=make_adresse(
+                    "35", "Rue Joseph Monier", "Rueil-Malmaison", "92500", "France"
+                ),
             ),
             "atlas": Fabricant.objects.create(
                 nom="Atlas Copco",
@@ -244,7 +305,9 @@ class Command(BaseCommand):
                 serviceApresVente=True,
             ),
         }
-        self.stdout.write(f"  {len(self.fabricants)} fabricants, {len(self.fournisseurs)} fournisseurs créés")
+        self.stdout.write(
+            f"  {len(self.fabricants)} fabricants, {len(self.fournisseurs)} fournisseurs créés"
+        )
 
     # ------------------------------------------------------------------
     # FAMILLES & MODÈLES D'ÉQUIPEMENT
@@ -252,23 +315,28 @@ class Command(BaseCommand):
     def _create_familles_modeles(self):
         from equipement.models import FamilleEquipement, ModeleEquipement
 
-        fam_elec  = FamilleEquipement.objects.create(nom="Équipements électriques")
-        fam_meca  = FamilleEquipement.objects.create(nom="Équipements mécaniques")
-        fam_fluid = FamilleEquipement.objects.create(nom="Équipements fluidiques")
+        fam_elec = FamilleEquipement.objects.create(nom="Équipements électriques")
+        fam_meca = FamilleEquipement.objects.create(nom="Équipements mécaniques")
+        FamilleEquipement.objects.create(nom="Équipements fluidiques")
         FamilleEquipement.objects.create(nom="Moteurs électriques", familleParente=fam_elec)
         FamilleEquipement.objects.create(nom="Compresseurs", familleParente=fam_meca)
 
         self.modeles = {
             "variateur": ModeleEquipement.objects.create(
-                nom="Variateur SINAMICS G120", fabricant=self.fabricants["siemens"]),
+                nom="Variateur SINAMICS G120", fabricant=self.fabricants["siemens"]
+            ),
             "automate": ModeleEquipement.objects.create(
-                nom="Automate SIMATIC S7-1500", fabricant=self.fabricants["siemens"]),
+                nom="Automate SIMATIC S7-1500", fabricant=self.fabricants["siemens"]
+            ),
             "disjoncteur": ModeleEquipement.objects.create(
-                nom="Disjoncteur NSX250B", fabricant=self.fabricants["schneider"]),
+                nom="Disjoncteur NSX250B", fabricant=self.fabricants["schneider"]
+            ),
             "compresseur": ModeleEquipement.objects.create(
-                nom="Compresseur GA15 VSD+", fabricant=self.fabricants["atlas"]),
+                nom="Compresseur GA15 VSD+", fabricant=self.fabricants["atlas"]
+            ),
             "pompe": ModeleEquipement.objects.create(
-                nom="Pompe CM10-2", fabricant=self.fabricants["grundfos"]),
+                nom="Pompe CM10-2", fabricant=self.fabricants["grundfos"]
+            ),
         }
         self.stdout.write(f"  {len(self.modeles)} modèles d'équipement créés")
 
@@ -276,7 +344,7 @@ class Command(BaseCommand):
     # ÉQUIPEMENTS
     # ------------------------------------------------------------------
     def _create_equipements(self):
-        from equipement.models import Equipement, StatutEquipement, Compteur, FamilleEquipement
+        from equipement.models import Compteur, Equipement, FamilleEquipement, StatutEquipement
 
         resp = self.users["responsable.gmao"]
         now = timezone.now()
@@ -404,33 +472,33 @@ class Command(BaseCommand):
     # CONSOMMABLES, MAGASINS & STOCKS
     # ------------------------------------------------------------------
     def _create_consommables_magasins(self):
-        from stock.models import Consommable, Magasin, Stocker, PorterSur
+        from stock.models import Consommable, Magasin, PorterSur, Stocker
 
         # Magasins
         mag_central = Magasin.objects.create(nom="Magasin Central", estMobile=False)
-        mag_mobile  = Magasin.objects.create(nom="Magasin Mobile Atelier", estMobile=True)
-        mag_elec    = Magasin.objects.create(nom="Armoire Électrique", estMobile=False)
+        mag_mobile = Magasin.objects.create(nom="Magasin Mobile Atelier", estMobile=True)
+        mag_elec = Magasin.objects.create(nom="Armoire Électrique", estMobile=False)
         self.magasins = {
             "central": mag_central,
-            "mobile":  mag_mobile,
-            "elec":    mag_elec,
+            "mobile": mag_mobile,
+            "elec": mag_elec,
         }
 
         # Consommables
         consommables_data = [
-            ("Filtre à air compresseur",     50, 10),
-            ("Huile hydraulique ISO VG 46",  30, 5),
-            ("Courroie trapézoïdale A42",    20, 3),
-            ("Joint torique 50x3",           100, 20),
-            ("Fusible 16A type gG",          150, 30),
-            ("Relais thermique 10-16A",      40, 8),
-            ("Roulement 6205-2RS",           60, 10),
-            ("Câble souple 2.5mm² (m)",      200, 50),
+            ("Filtre à air compresseur", 50, 10),
+            ("Huile hydraulique ISO VG 46", 30, 5),
+            ("Courroie trapézoïdale A42", 20, 3),
+            ("Joint torique 50x3", 100, 20),
+            ("Fusible 16A type gG", 150, 30),
+            ("Relais thermique 10-16A", 40, 8),
+            ("Roulement 6205-2RS", 60, 10),
+            ("Câble souple 2.5mm² (m)", 200, 50),
         ]
 
         self.consommables = []
         today = timezone.now().date()
-        date_str = today.isoformat()
+        today.isoformat()
 
         for nom, qte_central, qte_mobile in consommables_data:
             c = Consommable.objects.create(designation=nom, seuilStockFaible=5)
@@ -455,24 +523,26 @@ class Command(BaseCommand):
         Stocker.objects.create(consommable=self.consommables[4], magasin=mag_elec, quantite=80)
         Stocker.objects.create(consommable=self.consommables[5], magasin=mag_elec, quantite=15)
 
-        self.stdout.write(f"  {len(self.consommables)} consommables, {Magasin.objects.count()} magasins créés")
+        self.stdout.write(
+            f"  {len(self.consommables)} consommables, {Magasin.objects.count()} magasins créés"
+        )
 
     # ------------------------------------------------------------------
     # DEMANDES D'INTERVENTION & BONS DE TRAVAIL
     # ------------------------------------------------------------------
     def _create_di_bt(self):
-        from maintenance.models import DemandeIntervention, BonTravail
+        from maintenance.models import BonTravail, DemandeIntervention
 
         now = timezone.now()
-        op1   = self.users["o.durand"]
-        op2   = self.users["s.leroy"]
-        resp  = self.users["responsable.gmao"]
+        op1 = self.users["o.durand"]
+        op2 = self.users["s.leroy"]
+        resp = self.users["responsable.gmao"]
         tech1 = self.users["t.martin"]
         tech2 = self.users["a.bernard"]
         tech3 = self.users["l.moreau"]
         tech4 = self.users["c.camille"]
 
-        eq_list = list(self.equipements.values())
+        list(self.equipements.values())
 
         di_bt_scenarios = [
             # --- BT clôturé (panne résolue) ---
@@ -696,7 +766,6 @@ class Command(BaseCommand):
     # RÉSUMÉ
     # ------------------------------------------------------------------
     def _print_summary(self):
-        from utilisateur.models import Utilisateur, Role
 
         self.stdout.write("")
         self.stdout.write(self.style.SUCCESS("╔══════════════════════════════════════╗"))
@@ -704,13 +773,13 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("╠══════════════════════════════════════╣"))
         accounts = [
             ("responsable.gmao", "Responsable1!", "Responsable GMAO"),
-            ("t.martin",     "Technicien1!",  "Technicien prod"),
-            ("a.bernard",    "Technicien1!",  "Technicien prod"),
-            ("l.moreau",     "Technicien1!",  "Technicien prod"),
-            ("c.camille",    "Technicien1!",  "Technicien prod"),
-            ("o.durand",     "Operateur1!",   "Opérateur prod"),
-            ("s.leroy",      "Operateur1!",   "Opérateur prod"),
-            ("mag.simon",    "Magasinier1!",  "Magasinier"),
+            ("t.martin", "Technicien1!", "Technicien prod"),
+            ("a.bernard", "Technicien1!", "Technicien prod"),
+            ("l.moreau", "Technicien1!", "Technicien prod"),
+            ("c.camille", "Technicien1!", "Technicien prod"),
+            ("o.durand", "Operateur1!", "Opérateur prod"),
+            ("s.leroy", "Operateur1!", "Opérateur prod"),
+            ("mag.simon", "Magasinier1!", "Magasinier"),
         ]
         for login, pwd, role in accounts:
             line = f"  {login:<16} {pwd:<18} {role}"

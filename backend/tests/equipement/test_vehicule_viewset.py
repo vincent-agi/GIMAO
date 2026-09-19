@@ -88,7 +88,9 @@ def test_retrieve_non_vehicule_equipement_returns_404():
 def test_update_vehicule_persists_profile_field_change():
     client = APIClient()
     utilisateur = UtilisateurFactory()
-    create_response = client.post("/api/vehicules/", build_create_payload(utilisateur), format="json")
+    create_response = client.post(
+        "/api/vehicules/", build_create_payload(utilisateur), format="json"
+    )
     vehicule_id = create_response.json()["id"]
 
     update_response = client.put(

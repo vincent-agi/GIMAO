@@ -107,7 +107,9 @@ def date_to_ordinal_days(date_str: str | None) -> int:
         return 0
 
 
-def create_declencher_for_plan(compteur: Compteur, plan: PlanMaintenance, seuil_data: dict) -> Declencher:
+def create_declencher_for_plan(
+    compteur: Compteur, plan: PlanMaintenance, seuil_data: dict
+) -> Declencher:
     """Cree le seuil de declenchement (``Declencher``) liant un compteur a un plan.
 
     Args:
@@ -331,9 +333,18 @@ def update_equipement(equipement: Equipement, changes: dict, files) -> Equipemen
         ete appliques).
     """
     simple_fields = [
-        "numSerie", "reference", "designation", "dateMiseEnService",
-        "prixAchat", "modeleEquipement", "fournisseur", "fabricant",
-        "famille", "lieu", "statut", "type",
+        "numSerie",
+        "reference",
+        "designation",
+        "dateMiseEnService",
+        "prixAchat",
+        "modeleEquipement",
+        "fournisseur",
+        "fabricant",
+        "famille",
+        "lieu",
+        "statut",
+        "type",
     ]
 
     has_updates = False
@@ -387,7 +398,14 @@ def update_equipement(equipement: Equipement, changes: dict, files) -> Equipemen
                 equipement.famille = famille
                 has_updates = True
 
-        elif field in ("numSerie", "reference", "designation", "dateMiseEnService", "prixAchat", "type"):
+        elif field in (
+            "numSerie",
+            "reference",
+            "designation",
+            "dateMiseEnService",
+            "prixAchat",
+            "type",
+        ):
             ancien_val = getattr(equipement, field, None)
             if str(ancien_val) != str(nouveau):
                 setattr(equipement, field, nouveau)
@@ -409,7 +427,9 @@ def update_equipement(equipement: Equipement, changes: dict, files) -> Equipemen
             try:
                 equipement.lienImage.delete(save=False)
             except OSError:
-                logger.warning("Suppression de l'ancienne image impossible pour equipement %s", equipement.pk)
+                logger.warning(
+                    "Suppression de l'ancienne image impossible pour equipement %s", equipement.pk
+                )
         equipement.lienImage = uploaded_file
         has_updates = True
 

@@ -1,12 +1,13 @@
-import pytest
 import json
+
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from rest_framework.test import APIRequestFactory
 
-from maintenance.api.viewsets import DemandeInterventionViewSet
 from donnees.models import Document, TypeDocument
 from equipement.models import StatutEquipement
+from maintenance.api.viewsets import DemandeInterventionViewSet
 from maintenance.models import BonTravail
 from tests.factories import DemandeInterventionFactory, EquipementFactory, UtilisateurFactory
 
@@ -170,12 +171,14 @@ def test_should_create_demande_with_document(api_factory):
             "statut_suppose": "EN_FONCTIONNEMENT",
             "equipement_id": str(equipement.pk),
             "utilisateur_id": str(utilisateur.pk),
-            "documents": json.dumps([
-                {
-                    "nomDocument": "Doc DI",
-                    "typeDocument_id": type_document.pk,
-                }
-            ]),
+            "documents": json.dumps(
+                [
+                    {
+                        "nomDocument": "Doc DI",
+                        "typeDocument_id": type_document.pk,
+                    }
+                ]
+            ),
             "document_0": SimpleUploadedFile("doc_di.txt", b"abc", content_type="text/plain"),
         },
         format="multipart",
@@ -247,12 +250,14 @@ def test_should_return_400_when_create_document_missing_file(api_factory):
             "statut_suppose": "EN_FONCTIONNEMENT",
             "equipement_id": str(equipement.pk),
             "utilisateur_id": str(utilisateur.pk),
-            "documents": json.dumps([
-                {
-                    "nomDocument": "Doc sans fichier",
-                    "typeDocument_id": type_document.pk,
-                }
-            ]),
+            "documents": json.dumps(
+                [
+                    {
+                        "nomDocument": "Doc sans fichier",
+                        "typeDocument_id": type_document.pk,
+                    }
+                ]
+            ),
         },
         format="multipart",
     )
@@ -296,12 +301,14 @@ def test_should_partial_update_demande_and_create_new_document(api_factory):
         f"/api/maintenance/demandes-intervention/{demande.pk}/",
         {
             "nom": "Nom modifie",
-            "documents": json.dumps([
-                {
-                    "nomDocument": "Doc nouveau",
-                    "typeDocument_id": type_document.pk,
-                }
-            ]),
+            "documents": json.dumps(
+                [
+                    {
+                        "nomDocument": "Doc nouveau",
+                        "typeDocument_id": type_document.pk,
+                    }
+                ]
+            ),
             "document_0": SimpleUploadedFile("new_doc.txt", b"abc", content_type="text/plain"),
         },
         format="multipart",
@@ -331,13 +338,15 @@ def test_should_partial_update_existing_document_metadata(api_factory):
     request = api_factory.patch(
         f"/api/maintenance/demandes-intervention/{demande.pk}/",
         {
-            "documents": json.dumps([
-                {
-                    "document_id": document.pk,
-                    "nomDocument": "Doc modifie",
-                    "typeDocument_id": type_doc_new.pk,
-                }
-            ]),
+            "documents": json.dumps(
+                [
+                    {
+                        "document_id": document.pk,
+                        "nomDocument": "Doc modifie",
+                        "typeDocument_id": type_doc_new.pk,
+                    }
+                ]
+            ),
         },
         format="multipart",
     )
@@ -527,9 +536,9 @@ def test_should_return_400_when_partial_update_new_document_without_file(api_fac
     request = api_factory.patch(
         f"/api/maintenance/demandes-intervention/{demande.pk}/",
         {
-            "documents": json.dumps([
-                {"nomDocument": "Sans fichier", "typeDocument_id": type_document.pk}
-            ]),
+            "documents": json.dumps(
+                [{"nomDocument": "Sans fichier", "typeDocument_id": type_document.pk}]
+            ),
         },
         format="json",
     )

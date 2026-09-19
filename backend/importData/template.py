@@ -41,8 +41,16 @@ SHEET_DEFINITIONS = [
             "Complement adresse",
         ],
         [
-            f"Siemens AG {EXEMPLE_MARQUEUR}", "contact@siemens.fr", "0100000000", "Oui",
-            "12", "Rue de l'Industrie", "Anglet", "64600", "France", "",
+            f"Siemens AG {EXEMPLE_MARQUEUR}",
+            "contact@siemens.fr",
+            "0100000000",
+            "Oui",
+            "12",
+            "Rue de l'Industrie",
+            "Anglet",
+            "64600",
+            "France",
+            "",
         ],
     ),
     (
@@ -60,8 +68,16 @@ SHEET_DEFINITIONS = [
             "Complement adresse",
         ],
         [
-            f"Distrelec {EXEMPLE_MARQUEUR}", "contact@distrelec.fr", "0200000000", "Non",
-            "5", "Avenue des Fournisseurs", "Bayonne", "64100", "France", "",
+            f"Distrelec {EXEMPLE_MARQUEUR}",
+            "contact@distrelec.fr",
+            "0200000000",
+            "Non",
+            "5",
+            "Avenue des Fournisseurs",
+            "Bayonne",
+            "64100",
+            "France",
+            "",
         ],
     ),
     (
@@ -151,7 +167,7 @@ def _build_instructions_sheet(workbook):
     row += 1
 
     for sheet_name, sheet_headers, exemple_row in SHEET_DEFINITIONS:
-        for header, exemple_valeur in zip(sheet_headers, exemple_row):
+        for header, exemple_valeur in zip(sheet_headers, exemple_row, strict=False):
             obligatoire = "Oui" if header.strip().endswith("*") else "Non"
             colonne = header.replace("*", "").strip()
             valeur_affichee = str(exemple_valeur).replace(EXEMPLE_MARQUEUR, "").strip()

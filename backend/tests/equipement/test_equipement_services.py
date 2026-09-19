@@ -10,10 +10,9 @@ from types import SimpleNamespace
 import pytest
 from django.utils import timezone
 
-from equipement.models import Compteur, Constituer, Declencher, StatutEquipement
 from equipement import services
+from equipement.models import Compteur, Constituer, Declencher, StatutEquipement
 from maintenance.models import PlanMaintenance
-
 from tests.factories import (
     BonTravailFactory,
     CompteurFactory,
@@ -45,6 +44,7 @@ def authenticated_request_user(utilisateur):
 # date_to_ordinal_days
 # ==========================================
 
+
 class TestDateToOrdinalDays:
     def test_should_convert_valid_iso_date_to_positive_day_count(self):
         assert services.date_to_ordinal_days("2024-01-02") > 0
@@ -59,6 +59,7 @@ class TestDateToOrdinalDays:
 # ==========================================
 # create_declencher_for_plan
 # ==========================================
+
 
 class TestCreateDeclencherForPlan:
     def test_should_create_declencher_with_sum_for_numeric_compteur(self):
@@ -93,6 +94,7 @@ class TestCreateDeclencherForPlan:
 # ==========================================
 # create_equipement
 # ==========================================
+
 
 class TestCreateEquipement:
     def _base_data(self, lieu, modele, famille, fournisseur, fabricant):
@@ -154,7 +156,9 @@ class TestCreateEquipement:
 
         equipement = services.create_equipement(data, {}, authenticated_request_user(utilisateur))
 
-        assert StatutEquipement.objects.filter(equipement=equipement, statut="EN_FONCTIONNEMENT").exists()
+        assert StatutEquipement.objects.filter(
+            equipement=equipement, statut="EN_FONCTIONNEMENT"
+        ).exists()
 
     def test_should_link_consommables_via_constituer(self):
         utilisateur = UtilisateurFactory()
@@ -179,7 +183,12 @@ class TestCreateEquipement:
         data = self._base_data(lieu, modele, famille, fournisseur, modele.fabricant)
         type_plan = TypePlanMaintenanceFactory()
         data["compteurs"] = [
-            {"nom": "Compteur horaire", "valeurCourante": 10, "unite": "heures", "type": "Numérique"}
+            {
+                "nom": "Compteur horaire",
+                "valeurCourante": 10,
+                "unite": "heures",
+                "type": "Numérique",
+            }
         ]
         data["plansMaintenance"] = [
             {
@@ -206,7 +215,9 @@ class TestCreateEquipement:
         modele = ModeleEquipementFactory()
         data = self._base_data(lieu, modele, famille, fournisseur, modele.fabricant)
         type_plan = TypePlanMaintenanceFactory()
-        data["compteurs"] = [{"nom": "Compteur", "valeurCourante": 0, "unite": "heures", "type": "Numérique"}]
+        data["compteurs"] = [
+            {"nom": "Compteur", "valeurCourante": 0, "unite": "heures", "type": "Numérique"}
+        ]
         data["plansMaintenance"] = [
             {
                 "compteurIndex": 0,
@@ -224,6 +235,7 @@ class TestCreateEquipement:
 # ==========================================
 # update_equipement
 # ==========================================
+
 
 class TestUpdateEquipement:
     def test_should_update_simple_field_when_value_differs(self):
@@ -281,6 +293,7 @@ class TestUpdateEquipement:
 # archive_equipement_cascade
 # ==========================================
 
+
 class TestArchiveEquipementCascade:
     def test_should_archive_linked_demande_intervention(self):
         equipement = EquipementFactory()
@@ -318,6 +331,7 @@ class TestArchiveEquipementCascade:
 # ==========================================
 # get_historique_statuts / compute_equipement_kpi
 # ==========================================
+
 
 class TestHistoriqueEtKpi:
     def test_historique_statuts_should_be_ordered_chronologically(self):
@@ -365,6 +379,7 @@ class TestHistoriqueEtKpi:
 # ==========================================
 # add_document_to_equipement
 # ==========================================
+
 
 class TestAddDocumentToEquipement:
     def test_should_raise_when_file_missing(self):

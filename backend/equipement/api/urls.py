@@ -1,23 +1,22 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
+
+from equipement.api.views import EquipementFormDataView
 from equipement.api.viewsets import (
-    EquipementViewSet,
-    StatutEquipementViewSet,
-    ConstituerViewSet,
-    ModeleEquipementViewSet,
     CompteurViewSet,
-    FamilleEquipementViewSet,
-    EquipementAffichageViewSet,
+    ConstituerViewSet,
     DeclenchementViewSet,
+    EquipementAffichageViewSet,
+    EquipementViewSet,
+    FamilleEquipementViewSet,
+    ModeleEquipementViewSet,
+    StatutEquipementViewSet,
     VehiculeViewSet,
 )
-from equipement.api.views import EquipementFormDataView
 
 router = DefaultRouter()
 router.register(r"equipements", EquipementViewSet, basename="equipement")
-router.register(
-    r"statut-equipements", StatutEquipementViewSet, basename="statut-equipement"
-)
+router.register(r"statut-equipements", StatutEquipementViewSet, basename="statut-equipement")
 router.register(r"constituer", ConstituerViewSet, basename="constituer")
 router.register(r"modele-equipements", ModeleEquipementViewSet, basename="modele-equipement")
 router.register(r"compteurs", CompteurViewSet, basename="compteur")

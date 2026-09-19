@@ -1,28 +1,33 @@
 from django.db import models
-from exportData.formatters import generateCsvResponse, generateXlsxResponse
 
-from equipement.models import Equipement, StatutEquipement, Compteur, ModeleEquipement, Declencher
-from maintenance.models import BonTravail, DemandeIntervention, BonTravailConsommable
-from stock.models import Consommable, PorterSur, Stocker, Magasin
-from donnees.models import Fournisseur, Fabricant, Lieu
-from utilisateur.models import Utilisateur, Log
+from donnees.models import Fabricant, Fournisseur, Lieu
+from equipement.models import Compteur, Declencher, Equipement, ModeleEquipement, StatutEquipement
+from exportData.formatters import generateCsvResponse, generateXlsxResponse
+from maintenance.models import BonTravail, BonTravailConsommable, DemandeIntervention
+from stock.models import Consommable, Magasin, PorterSur, Stocker
+from utilisateur.models import Log, Utilisateur
 
 exportRegistry = {}
+
 
 def registerExporter(nom):
     """
     Decorator to register an exporter strategy into the exportRegistry.
     """
+
     def wrapper(cls):
         exportRegistry[nom] = cls
         return cls
+
     return wrapper
+
 
 class BaseExportStrategy:
     """
     Abstract base class for all export strategies.
     Requires `model` to be defined in subclasses.
     """
+
     model = None
 
     def __init__(self, request_params):
@@ -46,20 +51,20 @@ class BaseExportStrategy:
         """
         if not self.model:
             raise NotImplementedError("Subclasses must define a 'model'.")
-        
+
         qs = self.model.objects.all()
-        
+
         # Check if model has an `archive` field safely
-        has_archive = any(field.name == 'archive' for field in self.model._meta.fields)
+        has_archive = any(field.name == "archive" for field in self.model._meta.fields)
 
         if has_archive:
-            include_archived = self.params.get('includeArchived', 'no')
-            if include_archived == 'no':
+            include_archived = self.params.get("includeArchived", "no")
+            if include_archived == "no":
                 qs = qs.filter(archive=False)
-            elif include_archived == 'yes':
+            elif include_archived == "yes":
                 qs = qs.filter(archive=True)
             # 'both' means no filter
-            
+
         qs = self.apply_filters(qs)
         qs = self.apply_date_filters(qs)
         return qs
@@ -78,12 +83,12 @@ class BaseExportStrategy:
 
     def get_columns(self):
         """
-        Extracts columns from the parameters. 
+        Extracts columns from the parameters.
         Expects a comma-separated string: 'id,nom,etat'
         """
-        columns_str = self.params.get('columns', '')
+        columns_str = self.params.get("columns", "")
         if columns_str:
-            return [col.strip() for col in columns_str.split(',') if col.strip()]
+            return [col.strip() for col in columns_str.split(",") if col.strip()]
         return None
 
     def _get_field_metadata(self):
@@ -111,9 +116,9 @@ class BaseExportStrategy:
                 if field_name in row:
                     val = row[field_name]
                     if val is True:
-                        row[field_name] = 'Oui'
+                        row[field_name] = "Oui"
                     elif val is False:
-                        row[field_name] = 'Non'
+                        row[field_name] = "Non"
         return data
 
     def _process_row(self, row, obj):
@@ -131,7 +136,7 @@ class BaseExportStrategy:
         qs = self.get_queryset()
         columns = self.get_columns()
         column_labels, boolean_fields, fk_fields = self._get_field_metadata()
-    
+
         if not columns:
             # Use all field attnames as columns to guarantee consistent ordering
             columns = [field.attname for field in self.model._meta.fields]
@@ -146,47 +151,54 @@ class BaseExportStrategy:
             for col in columns:
                 if col in fk_fields:
                     fk_obj = getattr(obj, fk_fields[col], None)
-                    row[col] = str(fk_obj) if fk_obj is not None else ''
+                    row[col] = str(fk_obj) if fk_obj is not None else ""
                 else:
                     row[col] = getattr(obj, col, None)
-            
+
             row = self._process_row(row, obj)
             data.append(row)
 
         # Convert booleans True/False → Oui/Non
         data = self._format_data(data, boolean_fields)
 
-        file_type = self.params.get('fileType', 'csv').lower()
-        export_type = self.params.get('exportType', 'export')
-        
-        if file_type == 'xlsx':
-            return generateXlsxResponse(data, filename=export_type, columns=columns, column_labels=column_labels)
+        file_type = self.params.get("fileType", "csv").lower()
+        export_type = self.params.get("exportType", "export")
+
+        if file_type == "xlsx":
+            return generateXlsxResponse(
+                data, filename=export_type, columns=columns, column_labels=column_labels
+            )
         else:
-            return generateCsvResponse(data, filename=export_type, columns=columns, column_labels=column_labels)
+            return generateCsvResponse(
+                data, filename=export_type, columns=columns, column_labels=column_labels
+            )
 
 
 # 1. Equipement
-@registerExporter('equipement')
+@registerExporter("equipement")
 class EquipementStrategy(BaseExportStrategy):
     model = Equipement
 
+
 # 2. Statut Equipement
-@registerExporter('statut_equipement')
+@registerExporter("statut_equipement")
 class StatutEquipementStrategy(BaseExportStrategy):
     model = StatutEquipement
-    
+
     def apply_filters(self, qs):
-        equipement_id = self.params.get('equipementId')
+        equipement_id = self.params.get("equipementId")
         if equipement_id:
             qs = qs.filter(equipement_id=equipement_id)
         return qs
 
     def apply_date_filters(self, qs):
-        start_date = self.params.get('startDate')
-        end_date = self.params.get('endDate')
+        start_date = self.params.get("startDate")
+        end_date = self.params.get("endDate")
         if start_date or end_date:
-            if start_date and len(start_date) == 10: start_date += " 00:00:00"
-            if end_date and len(end_date) == 10: end_date += " 23:59:59"
+            if start_date and len(start_date) == 10:
+                start_date += " 00:00:00"
+            if end_date and len(end_date) == 10:
+                end_date += " 23:59:59"
 
             if start_date and end_date:
                 date_filter = models.Q(dateChangement__range=[start_date, end_date])
@@ -195,64 +207,73 @@ class StatutEquipementStrategy(BaseExportStrategy):
             else:
                 date_filter = models.Q(dateChangement__lte=end_date)
 
-            equipements_in_range_ids = list(qs.filter(date_filter).values_list('equipement_id', flat=True))
-            
-            latest_statut_data = StatutEquipement.objects.exclude(
-                equipement_id__in=equipements_in_range_ids
-            ).values('equipement_id').annotate(max_id=models.Max('id'))
-            
-            latest_statut_ids = [item['max_id'] for item in latest_statut_data if item['max_id']]
-            
-            qs = qs.filter(
-                date_filter |
-                models.Q(id__in=latest_statut_ids)
+            equipements_in_range_ids = list(
+                qs.filter(date_filter).values_list("equipement_id", flat=True)
             )
+
+            latest_statut_data = (
+                StatutEquipement.objects.exclude(equipement_id__in=equipements_in_range_ids)
+                .values("equipement_id")
+                .annotate(max_id=models.Max("id"))
+            )
+
+            latest_statut_ids = [item["max_id"] for item in latest_statut_data if item["max_id"]]
+
+            qs = qs.filter(date_filter | models.Q(id__in=latest_statut_ids))
         return qs
 
+
 # 3. BonTravail (bt)
-@registerExporter('bt')
+@registerExporter("bt")
 class BonTravailStrategy(BaseExportStrategy):
     model = BonTravail
-    
+
     def apply_filters(self, qs):
-        equipement_id = self.params.get('equipementId')
+        equipement_id = self.params.get("equipementId")
         if equipement_id:
             qs = qs.filter(demande_intervention__equipement_id=equipement_id)
         return qs
 
     def apply_date_filters(self, qs):
-        start_date = self.params.get('startDate')
-        end_date = self.params.get('endDate')
+        start_date = self.params.get("startDate")
+        end_date = self.params.get("endDate")
         if start_date or end_date:
-            if start_date and len(start_date) == 10: start_date += " 00:00:00"
-            if end_date and len(end_date) == 10: end_date += " 23:59:59"
-            
+            if start_date and len(start_date) == 10:
+                start_date += " 00:00:00"
+            if end_date and len(end_date) == 10:
+                end_date += " 23:59:59"
+
             if start_date and end_date:
-                qs = qs.filter(demande_intervention__date_changementStatut__range=[start_date, end_date])
+                qs = qs.filter(
+                    demande_intervention__date_changementStatut__range=[start_date, end_date]
+                )
             elif start_date:
                 qs = qs.filter(demande_intervention__date_changementStatut__gte=start_date)
             else:
                 qs = qs.filter(demande_intervention__date_changementStatut__lte=end_date)
         return qs
 
+
 # 4. DemandeIntervention (di)
-@registerExporter('di')
+@registerExporter("di")
 class DemandeInterventionStrategy(BaseExportStrategy):
     model = DemandeIntervention
-    
+
     def apply_filters(self, qs):
-        equipement_id = self.params.get('equipementId')
+        equipement_id = self.params.get("equipementId")
         if equipement_id:
             qs = qs.filter(equipement_id=equipement_id)
         return qs
 
     def apply_date_filters(self, qs):
-        start_date = self.params.get('startDate')
-        end_date = self.params.get('endDate')
+        start_date = self.params.get("startDate")
+        end_date = self.params.get("endDate")
         if start_date or end_date:
-            if start_date and len(start_date) == 10: start_date += " 00:00:00"
-            if end_date and len(end_date) == 10: end_date += " 23:59:59"
-            
+            if start_date and len(start_date) == 10:
+                start_date += " 00:00:00"
+            if end_date and len(end_date) == 10:
+                end_date += " 23:59:59"
+
             if start_date and end_date:
                 qs = qs.filter(date_creation__range=[start_date, end_date])
             elif start_date:
@@ -261,29 +282,33 @@ class DemandeInterventionStrategy(BaseExportStrategy):
                 qs = qs.filter(date_creation__lte=end_date)
         return qs
 
+
 # 5. Consommable (conso)
-@registerExporter('conso')
+@registerExporter("conso")
 class ConsommableStrategy(BaseExportStrategy):
     model = Consommable
 
+
 # 6. Historique Achat Consommable (PorterSur)
-@registerExporter('historique_achat_conso')
+@registerExporter("historique_achat_conso")
 class AchatConsommableStrategy(BaseExportStrategy):
     model = PorterSur
-    
+
     def apply_filters(self, qs):
-        conso_id = self.params.get('consoId')
+        conso_id = self.params.get("consoId")
         if conso_id:
             qs = qs.filter(consommable_id=conso_id)
         return qs
 
     def apply_date_filters(self, qs):
-        start_date = self.params.get('startDate')
-        end_date = self.params.get('endDate')
+        start_date = self.params.get("startDate")
+        end_date = self.params.get("endDate")
         if start_date or end_date:
-            if start_date and len(start_date) == 10: start_date += " 00:00:00"
-            if end_date and len(end_date) == 10: end_date += " 23:59:59"
-            
+            if start_date and len(start_date) == 10:
+                start_date += " 00:00:00"
+            if end_date and len(end_date) == 10:
+                end_date += " 23:59:59"
+
             if start_date and end_date:
                 qs = qs.filter(date_reference_prix__range=[start_date, end_date])
             elif start_date:
@@ -292,40 +317,45 @@ class AchatConsommableStrategy(BaseExportStrategy):
                 qs = qs.filter(date_reference_prix__lte=end_date)
         return qs
 
+
 # 7. Stock (Stocker)
-@registerExporter('stock')
+@registerExporter("stock")
 class StockStrategy(BaseExportStrategy):
     model = Stocker
-    
+
     def apply_filters(self, qs):
-        magasin_id = self.params.get('magasinId')
+        magasin_id = self.params.get("magasinId")
         if magasin_id:
             qs = qs.filter(magasin_id=magasin_id)
         return qs
 
+
 # 8. Magasins
-@registerExporter('magasins')
+@registerExporter("magasins")
 class MagasinStrategy(BaseExportStrategy):
     model = Magasin
 
+
 # 9. Historique Sortie Magasin (BonTravailConsommable)
-@registerExporter('historique_sortie_magasin')
+@registerExporter("historique_sortie_magasin")
 class SortieMagasinStrategy(BaseExportStrategy):
     model = BonTravailConsommable
-    
+
     def apply_filters(self, qs):
-        magasin_id = self.params.get('magasinId')
+        magasin_id = self.params.get("magasinId")
         if magasin_id:
             qs = qs.filter(magasin_reserve_id=magasin_id)
         return qs
 
     def apply_date_filters(self, qs):
-        start_date = self.params.get('startDate')
-        end_date = self.params.get('endDate')
+        start_date = self.params.get("startDate")
+        end_date = self.params.get("endDate")
         if start_date or end_date:
-            if start_date and len(start_date) == 10: start_date += " 00:00:00"
-            if end_date and len(end_date) == 10: end_date += " 23:59:59"
-            
+            if start_date and len(start_date) == 10:
+                start_date += " 00:00:00"
+            if end_date and len(end_date) == 10:
+                end_date += " 23:59:59"
+
             if start_date and end_date:
                 qs = qs.filter(date_confirme__range=[start_date, end_date])
             elif start_date:
@@ -334,24 +364,27 @@ class SortieMagasinStrategy(BaseExportStrategy):
                 qs = qs.filter(date_confirme__lte=end_date)
         return qs
 
+
 # 10. Logs
-@registerExporter('logs')
+@registerExporter("logs")
 class LogStrategy(BaseExportStrategy):
     model = Log
-    
+
     def apply_filters(self, qs):
-        utilisateur_id = self.params.get('utilisateurId')
+        utilisateur_id = self.params.get("utilisateurId")
         if utilisateur_id:
             qs = qs.filter(utilisateur_id=utilisateur_id)
         return qs
 
     def apply_date_filters(self, qs):
-        start_date = self.params.get('startDate')
-        end_date = self.params.get('endDate')
+        start_date = self.params.get("startDate")
+        end_date = self.params.get("endDate")
         if start_date or end_date:
-            if start_date and len(start_date) == 10: start_date += " 00:00:00"
-            if end_date and len(end_date) == 10: end_date += " 23:59:59"
-            
+            if start_date and len(start_date) == 10:
+                start_date += " 00:00:00"
+            if end_date and len(end_date) == 10:
+                end_date += " 23:59:59"
+
             if start_date and end_date:
                 qs = qs.filter(date__range=[start_date, end_date])
             elif start_date:
@@ -360,90 +393,97 @@ class LogStrategy(BaseExportStrategy):
                 qs = qs.filter(date__lte=end_date)
         return qs
 
+
 # 11. Fournisseur
-@registerExporter('fournisseur')
+@registerExporter("fournisseur")
 class FournisseurStrategy(BaseExportStrategy):
     model = Fournisseur
 
+
 # 12. Fabricant
-@registerExporter('fabricant')
+@registerExporter("fabricant")
 class FabricantStrategy(BaseExportStrategy):
     model = Fabricant
 
+
 # 13. Modele Equipement
-@registerExporter('modele_equipement')
+@registerExporter("modele_equipement")
 class ModeleEquipementStrategy(BaseExportStrategy):
     model = ModeleEquipement
 
+
 # 14. Lieu
-@registerExporter('lieu')
+@registerExporter("lieu")
 class LieuStrategy(BaseExportStrategy):
     model = Lieu
 
+
 # 15. Compteur (uniquement numériques)
-@registerExporter('compteur')
+@registerExporter("compteur")
 class CompteurNumeriqueStrategy(BaseExportStrategy):
     model = Compteur
-    
+
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.exclude(type='Calendaire')
+        qs = qs.exclude(type="Calendaire")
         return qs
 
     def apply_filters(self, qs):
-        equipement_id = self.params.get('equipementId')
+        equipement_id = self.params.get("equipementId")
         if equipement_id:
             qs = qs.filter(equipement_id=equipement_id)
         return qs
 
+
 # 16. Seuils de compteurs numériques
-@registerExporter('seuils_compteur')
+@registerExporter("seuils_compteur")
 class SeuilCompteurStrategy(BaseExportStrategy):
     model = Declencher
-    
+
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.exclude(compteur__type='Calendaire')
+        qs = qs.exclude(compteur__type="Calendaire")
         return qs
 
     def apply_filters(self, qs):
-        equipement_id = self.params.get('equipementId')
-        if equipement_id:   
+        equipement_id = self.params.get("equipementId")
+        if equipement_id:
             qs = qs.filter(compteur__equipement_id=equipement_id)
         return qs
 
+
 # 17. Périodicités (seuils de compteurs calendaires)
-@registerExporter('periodicites')
+@registerExporter("periodicites")
 class PeriodiciteStrategy(BaseExportStrategy):
     model = Declencher
-    
+
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.filter(compteur__type='Calendaire')
+        qs = qs.filter(compteur__type="Calendaire")
         return qs
 
     def apply_filters(self, qs):
-        equipement_id = self.params.get('equipementId')
+        equipement_id = self.params.get("equipementId")
         if equipement_id:
             qs = qs.filter(compteur__equipement_id=equipement_id)
         return qs
 
     def apply_date_filters(self, qs):
-        start_date = self.params.get('startDate')
-        end_date = self.params.get('endDate')
+        start_date = self.params.get("startDate")
+        end_date = self.params.get("endDate")
         if start_date or end_date:
             from datetime import datetime
-            
+
             start_ord = None
             end_ord = None
             try:
                 if start_date:
-                    start_ord = datetime.strptime(start_date[:10], '%Y-%m-%d').date().toordinal()
+                    start_ord = datetime.strptime(start_date[:10], "%Y-%m-%d").date().toordinal()
                 if end_date:
-                    end_ord = datetime.strptime(end_date[:10], '%Y-%m-%d').date().toordinal()
+                    end_ord = datetime.strptime(end_date[:10], "%Y-%m-%d").date().toordinal()
             except ValueError:
                 pass
-            
+
             if start_ord and end_ord:
                 qs = qs.filter(prochaineMaintenance__range=[start_ord, end_ord])
             elif start_ord:
@@ -454,18 +494,18 @@ class PeriodiciteStrategy(BaseExportStrategy):
 
     def _get_field_metadata(self):
         column_labels, boolean_fields, fk_fields = super()._get_field_metadata()
-        if 'ecartInterventions' in column_labels:
-            column_labels['ecartInterventions'] += ' (Jours)'
+        if "ecartInterventions" in column_labels:
+            column_labels["ecartInterventions"] += " (Jours)"
         return column_labels, boolean_fields, fk_fields
 
     def _process_row(self, row, obj):
         from datetime import date
 
         # Récupère les ordinaux bruts AVANT conversion en date
-        ord_derniere  = row.get('derniereIntervention')
-        ord_prochaine = row.get('prochaineMaintenance')
+        ord_derniere = row.get("derniereIntervention")
+        ord_prochaine = row.get("prochaineMaintenance")
 
-        for field in ['derniereIntervention', 'prochaineMaintenance']:
+        for field in ["derniereIntervention", "prochaineMaintenance"]:
             if field in row and row[field] is not None:
                 try:
                     row[field] = date.fromordinal(int(row[field]))
@@ -473,16 +513,16 @@ class PeriodiciteStrategy(BaseExportStrategy):
                     pass
 
         # Calcul de l'écart en jours via les ordinaux (insensible au DST)
-        if 'ecartInterventions' in row:
+        if "ecartInterventions" in row:
             try:
                 ecart_jours = int(ord_prochaine) - int(ord_derniere)
-                row['ecartInterventions'] = ecart_jours
+                row["ecartInterventions"] = ecart_jours
             except Exception:
-                row['ecartInterventions'] = ''
+                row["ecartInterventions"] = ""
         return row
 
+
 # 17. Utilisateurs
-@registerExporter('users')
+@registerExporter("users")
 class UtilisateurStrategy(BaseExportStrategy):
     model = Utilisateur
-

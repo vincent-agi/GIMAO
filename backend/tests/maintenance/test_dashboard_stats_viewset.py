@@ -2,7 +2,12 @@ import pytest
 from rest_framework.test import APIRequestFactory
 
 from maintenance.api.viewsets import DashboardStatsViewset
-from tests.factories import BonTravailFactory, DemandeInterventionFactory, PermissionFactory, UtilisateurFactory
+from tests.factories import (
+    BonTravailFactory,
+    DemandeInterventionFactory,
+    PermissionFactory,
+    UtilisateurFactory,
+)
 from utilisateur.models import RolePermission, UtilisateurPermission
 
 

@@ -1,23 +1,23 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from donnees.models import Lieu, Fabricant, Fournisseur, TypeDocument
 from donnees.api.serializers import (
     FabricantSimpleSerializer,
     FournisseurSimpleSerializer,
     TypeDocumentSerializer,
 )
-from stock.models import Consommable
-from stock.api.serializers import ConsommableSerializer
-from maintenance.models import TypePlanMaintenance
-from maintenance.api.serializers import TypePlanMaintenanceSerializer
-from equipement.models import ModeleEquipement, FamilleEquipement
+from donnees.models import Fabricant, Fournisseur, Lieu, TypeDocument
 from equipement.api.serializers import (
-    ModeleEquipementSerializer,
     FamilleEquipementSerializer,
+    ModeleEquipementSerializer,
 )
+from equipement.models import FamilleEquipement, ModeleEquipement
 from gimao.pagination import LargePagination
+from maintenance.api.serializers import TypePlanMaintenanceSerializer
+from maintenance.models import TypePlanMaintenance
+from stock.api.serializers import ConsommableSerializer
+from stock.models import Consommable
 
 
 class EquipementFormDataPagination(LargePagination):
@@ -34,7 +34,7 @@ class EquipementFormDataView(APIView):
 
     SECTION_CONFIG = {
         "equipmentModels": {
-            "queryset": ModeleEquipement.objects.select_related('fabricant').all(),
+            "queryset": ModeleEquipement.objects.select_related("fabricant").all(),
             "serializer": ModeleEquipementSerializer,
             "search_field": "nom",
             "ordering": "nom",
@@ -52,7 +52,7 @@ class EquipementFormDataView(APIView):
             "ordering": "nom",
         },
         "consumables": {
-            "queryset": Consommable.objects.prefetch_related('magasins', 'documents'),
+            "queryset": Consommable.objects.prefetch_related("magasins", "documents"),
             "serializer": ConsommableSerializer,
             "search_field": "designation",
             "ordering": "designation",
@@ -81,7 +81,7 @@ class EquipementFormDataView(APIView):
         return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
     def _build_locations_tree(self):
-        lieux = list(Lieu.objects.all().order_by('nomLieu'))
+        lieux = list(Lieu.objects.all().order_by("nomLieu"))
         children_by_parent = {}
 
         for lieu in lieux:
@@ -130,15 +130,15 @@ class EquipementFormDataView(APIView):
             response_data = {
                 "locations": self._build_locations_tree(),
                 "familles": FamilleEquipementSerializer(
-                    FamilleEquipement.objects.all().order_by('nom'),
+                    FamilleEquipement.objects.all().order_by("nom"),
                     many=True,
                 ).data,
                 "typesPM": TypePlanMaintenanceSerializer(
-                    TypePlanMaintenance.objects.all().order_by('libelle'),
+                    TypePlanMaintenance.objects.all().order_by("libelle"),
                     many=True,
                 ).data,
                 "typesDocuments": TypeDocumentSerializer(
-                    TypeDocument.objects.all().order_by('nomTypeDocument'),
+                    TypeDocument.objects.all().order_by("nomTypeDocument"),
                     many=True,
                 ).data,
             }
@@ -147,19 +147,23 @@ class EquipementFormDataView(APIView):
                 response_data.update(
                     {
                         "equipmentModels": ModeleEquipementSerializer(
-                            ModeleEquipement.objects.select_related('fabricant').all().order_by('nom'),
+                            ModeleEquipement.objects.select_related("fabricant")
+                            .all()
+                            .order_by("nom"),
                             many=True,
                         ).data,
                         "fabricants": FabricantSimpleSerializer(
-                            Fabricant.objects.all().order_by('nom'),
+                            Fabricant.objects.all().order_by("nom"),
                             many=True,
                         ).data,
                         "fournisseurs": FournisseurSimpleSerializer(
-                            Fournisseur.objects.all().order_by('nom'),
+                            Fournisseur.objects.all().order_by("nom"),
                             many=True,
                         ).data,
                         "consumables": ConsommableSerializer(
-                            Consommable.objects.prefetch_related('magasins', 'documents').all().order_by('designation'),
+                            Consommable.objects.prefetch_related("magasins", "documents")
+                            .all()
+                            .order_by("designation"),
                             many=True,
                         ).data,
                     }

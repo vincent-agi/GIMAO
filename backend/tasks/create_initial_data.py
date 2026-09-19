@@ -1,11 +1,19 @@
-from maintenance.models import TypePlanMaintenance
 from donnees.models import TypeDocument
-from utilisateur.models import Utilisateur, Role, Permission, RolePermission, Module
+from maintenance.models import TypePlanMaintenance
+from utilisateur.models import Module, Permission, Role, RolePermission, Utilisateur
+
 from . import perms_data
+
 
 def create_initial_data():
     # Création des rôles par défaut
-    roles = ['Responsable GMAO', 'Technicien prod', 'Technicien maintenance', 'Magasinier', 'Opérateur prod']
+    roles = [
+        "Responsable GMAO",
+        "Technicien prod",
+        "Technicien maintenance",
+        "Magasinier",
+        "Opérateur prod",
+    ]
     for role_name in roles:
         role, _ = Role.objects.get_or_create(nomRole=role_name)
         if not role.estDefaut:
@@ -13,7 +21,7 @@ def create_initial_data():
             role.save()
 
     # Création des types de plans de maintenance par défaut
-    types_plan_maintenance = ['Préventive systématique', 'Préventive conditionnelle', 'Corrective']
+    types_plan_maintenance = ["Préventive systématique", "Préventive conditionnelle", "Corrective"]
     for type_name in types_plan_maintenance:
         TypePlanMaintenance.objects.get_or_create(libelle=type_name)
 
@@ -30,40 +38,40 @@ def create_initial_data():
         "Rapport d'intervention",
         "Rapport de contrôle",
         "Certificat de conformité",
-        "Devis / Facture"
+        "Devis / Facture",
     ]
     for doc_type in types_document:
         TypeDocument.objects.get_or_create(nomTypeDocument=doc_type)
 
     # Création des modules
     modules_data = {
-        'di': "Demandes d'intervention",
-        'bt': 'Bons de travail',
-        'eq': 'Équipements',
-        'cp': 'Compteurs',
-        'mp': 'Maintenances préventives',
-        'stock': 'Stocks',
-        'cons': 'Consommables',
-        'mag': 'Magasins',
-        'user': 'Utilisateurs',
-        'role': 'Rôles',
-        'loc': 'Lieux',
-        'sup': 'Fournisseurs',
-        'man': 'Fabricants',
-        'eqmod': "Modèles d'équipement",
-        'veh': 'Véhicules',
-        'export': 'Export',
-        'menu': 'Menu',
-        'dash': 'Dashboard',
+        "di": "Demandes d'intervention",
+        "bt": "Bons de travail",
+        "eq": "Équipements",
+        "cp": "Compteurs",
+        "mp": "Maintenances préventives",
+        "stock": "Stocks",
+        "cons": "Consommables",
+        "mag": "Magasins",
+        "user": "Utilisateurs",
+        "role": "Rôles",
+        "loc": "Lieux",
+        "sup": "Fournisseurs",
+        "man": "Fabricants",
+        "eqmod": "Modèles d'équipement",
+        "veh": "Véhicules",
+        "export": "Export",
+        "menu": "Menu",
+        "dash": "Dashboard",
     }
     modules = {}
     for code, nom in modules_data.items():
-        module, _ = Module.objects.get_or_create(code=code, defaults={'nom': nom})
+        module, _ = Module.objects.get_or_create(code=code, defaults={"nom": nom})
         modules[code] = module
 
     # Premier passage : créer/mettre à jour sans parent
     for perm_name, (description, perm_type, _parent) in perms_data.perms.items():
-        module_code = perm_name.split(':')[0]
+        module_code = perm_name.split(":")[0]
         module = modules.get(module_code)
 
         perm, _created = Permission.objects.get_or_create(nomPermission=perm_name)
@@ -103,5 +111,5 @@ def create_initial_data():
     # Création de l'utilisateur responsable APRÈS les permissions
     Utilisateur.objects.get_or_create(
         nomUtilisateur="responsable",
-        defaults={"role": Role.objects.get(nomRole="Responsable GMAO")}
+        defaults={"role": Role.objects.get(nomRole="Responsable GMAO")},
     )

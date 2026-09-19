@@ -1,9 +1,9 @@
 from io import StringIO
 
 from django.core.management import call_command
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 
 class SeedDemoDataView(APIView):
@@ -36,6 +36,9 @@ class SeedDemoDataView(APIView):
             )
 
         return Response(
-            {"message": "Donnees de demonstration chargees avec succes.", "detail": output.getvalue()},
+            {
+                "message": "Donnees de demonstration chargees avec succes.",
+                "detail": output.getvalue(),
+            },
             status=status.HTTP_200_OK,
         )

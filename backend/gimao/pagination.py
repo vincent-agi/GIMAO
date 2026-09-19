@@ -33,13 +33,17 @@ class PaginatedActionMixin:
         page = self.paginate_queryset(queryset)
 
         if serializer_class is None:
-            serializer_factory = lambda items: self.get_serializer(items, many=many)
+
+            def serializer_factory(items):
+                return self.get_serializer(items, many=many)
         else:
-            serializer_factory = lambda items: serializer_class(
-                items,
-                many=many,
-                context=self.get_serializer_context(),
-            )
+
+            def serializer_factory(items):
+                return serializer_class(
+                    items,
+                    many=many,
+                    context=self.get_serializer_context(),
+                )
 
         serializer = serializer_factory(page if page is not None else queryset)
 

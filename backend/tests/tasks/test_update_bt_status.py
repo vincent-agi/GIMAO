@@ -1,6 +1,7 @@
+from datetime import timedelta
+
 import pytest
 from django.utils import timezone
-from datetime import timedelta
 
 from tasks.updateBtStatus import update_bt_status
 from tests.factories import BonTravailFactory
@@ -14,7 +15,7 @@ def test_should_mark_bt_as_en_retard_when_date_prevue_is_past():
     """
     # GIVEN
     bt = BonTravailFactory(
-        statut='EN_ATTENTE',
+        statut="EN_ATTENTE",
         date_prevue=timezone.now() - timedelta(days=1),
         date_debut=None,
     )
@@ -24,7 +25,7 @@ def test_should_mark_bt_as_en_retard_when_date_prevue_is_past():
 
     # THEN
     bt.refresh_from_db()
-    assert bt.statut == 'EN_RETARD'
+    assert bt.statut == "EN_RETARD"
 
 
 @pytest.mark.django_db
@@ -35,12 +36,12 @@ def test_should_not_alter_bt_already_in_terminal_status():
     """
     # GIVEN
     bt_termine = BonTravailFactory(
-        statut='TERMINE',
+        statut="TERMINE",
         date_prevue=timezone.now() - timedelta(days=2),
         date_debut=None,
     )
     bt_cloture = BonTravailFactory(
-        statut='CLOTURE',
+        statut="CLOTURE",
         date_prevue=timezone.now() - timedelta(days=2),
         date_debut=None,
     )
@@ -51,8 +52,8 @@ def test_should_not_alter_bt_already_in_terminal_status():
     # THEN
     bt_termine.refresh_from_db()
     bt_cloture.refresh_from_db()
-    assert bt_termine.statut == 'TERMINE'
-    assert bt_cloture.statut == 'CLOTURE'
+    assert bt_termine.statut == "TERMINE"
+    assert bt_cloture.statut == "CLOTURE"
 
 
 @pytest.mark.django_db
@@ -62,7 +63,7 @@ def test_should_not_alter_bt_without_date_prevue():
     """
     # GIVEN
     bt = BonTravailFactory(
-        statut='EN_ATTENTE',
+        statut="EN_ATTENTE",
         date_prevue=None,
         date_debut=None,
     )
@@ -72,4 +73,4 @@ def test_should_not_alter_bt_without_date_prevue():
 
     # THEN
     bt.refresh_from_db()
-    assert bt.statut == 'EN_ATTENTE'
+    assert bt.statut == "EN_ATTENTE"

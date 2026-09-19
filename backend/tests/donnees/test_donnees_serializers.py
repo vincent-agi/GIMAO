@@ -23,12 +23,8 @@ def test_should_serialize_lieu_parent_children_and_hierarchy():
         "nomLieu": "Site",
         "typeLieu": "SITE",
     }
-    assert data["sous_lieux"] == [
-        {"id": child.id, "nomLieu": "Zone A", "typeLieu": "ZONE"}
-    ]
-    assert data["hierarchie_complete"] == [
-        {"id": root.id, "nomLieu": "Site", "typeLieu": "SITE"}
-    ]
+    assert data["sous_lieux"] == [{"id": child.id, "nomLieu": "Zone A", "typeLieu": "ZONE"}]
+    assert data["hierarchie_complete"] == [{"id": root.id, "nomLieu": "Site", "typeLieu": "SITE"}]
 
 
 @pytest.mark.django_db
@@ -66,7 +62,9 @@ def test_should_create_document_with_typedocument_id_alias_and_default_name_from
     type_doc = TypeDocument.objects.create(nomTypeDocument="PDF")
     upload = SimpleUploadedFile("manuel.pdf", b"file-content", content_type="application/pdf")
 
-    serializer = DocumentSerializer(data={"cheminAcces": upload, "typeDocument_id": type_doc.id, "nomDocument": ""})
+    serializer = DocumentSerializer(
+        data={"cheminAcces": upload, "typeDocument_id": type_doc.id, "nomDocument": ""}
+    )
 
     assert serializer.is_valid(), serializer.errors
     document = serializer.save()

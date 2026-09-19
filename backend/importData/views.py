@@ -1,10 +1,10 @@
 import openpyxl
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from importData.template import generate_equipement_template
 from importData.importers import EquipementImporter
+from importData.template import generate_equipement_template
 from utilisateur.models import Utilisateur
 
 
