@@ -23,7 +23,9 @@ from equipement.api.serializers import (
     FamilleEquipementSerializer,
     EquipementAffichageSerializer,
     EquipementCreateSerializer,
-    DeclenchementSerializer
+    DeclenchementSerializer,
+    VehiculeSerializer,
+    VehiculeCreateSerializer,
 )
 
 from maintenance.models import (
@@ -217,6 +219,72 @@ class EquipementViewSet(ArchivableViewSetMixin, GimaoModelViewSet):
         equipement = services.update_equipement(equipement, changes, request.FILES)
 
         return Response(EquipementSerializer(equipement).data, status=status.HTTP_200_OK)
+
+
+class VehiculeViewSet(ArchivableViewSetMixin, GimaoModelViewSet):
+    """
+    CRUD sur les véhicules (``Equipement`` de type ``VEHICULE`` + son ``VehiculeProfile``).
+
+    La création et la mise à jour délèguent respectivement à
+    ``equipement.services.create_vehicule`` et ``update_vehicule``, qui
+    créent/modifient l'``Equipement`` et son ``VehiculeProfile`` dans une
+    seule transaction atomique (cf. ADR-001, TUS-005).
+    """
+    queryset = Equipement.objects.filter(type='VEHICULE').select_related(
+        'lieu', 'modele', 'vehicule_profile'
+    )
+    serializer_class = VehiculeSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return VehiculeCreateSerializer
+        return VehiculeSerializer
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        """Crée un véhicule (Equipement + VehiculeProfile) en une seule requête."""
+        data = EquipementViewSet._normalize_create_payload(request.data)
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            equipement = services.create_vehicule(data, request.FILES, getattr(request, "user", None))
+        except services.UtilisateurCreateurIntrouvable as exc:
+            return Response({"error": exc.message}, status=status.HTTP_401_UNAUTHORIZED)
+        except services.DocumentRequisManquant as exc:
+            return Response({"error": exc.message}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(VehiculeSerializer(equipement).data, status=status.HTTP_201_CREATED)
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        """Met à jour un véhicule à partir d'un diff de changements (``changes`` en FormData)."""
+        equipement = self.get_object()
+
+        data = dict(request.data)
+        for key, value in list(data.items()):
+            if isinstance(value, list) and len(value) == 1:
+                data[key] = value[0]
+
+        changes_data = data.get("changes")
+        if not changes_data:
+            return Response(
+                {"error": "Aucune donnée de changement fournie"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            changes = json.loads(changes_data)
+        except json.JSONDecodeError:
+            return Response(
+                {"error": "Format JSON invalide pour les changements"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        equipement = services.update_vehicule(equipement, changes, request.FILES)
+
+        return Response(VehiculeSerializer(equipement).data, status=status.HTTP_200_OK)
 
 
 class StatutEquipementViewSet(GimaoModelViewSet):

@@ -8,7 +8,8 @@ from equipement.api.viewsets import (
     CompteurViewSet,
     FamilleEquipementViewSet,
     EquipementAffichageViewSet,
-    DeclenchementViewSet
+    DeclenchementViewSet,
+    VehiculeViewSet,
 )
 from equipement.api.views import EquipementFormDataView
 
@@ -22,6 +23,7 @@ router.register(r"modele-equipements", ModeleEquipementViewSet, basename="modele
 router.register(r"compteurs", CompteurViewSet, basename="compteur")
 router.register(r"famille-equipements", FamilleEquipementViewSet, basename="famille-equipement")
 router.register(r"declenchements", DeclenchementViewSet, basename="declenchements")
+router.register(r"vehicules", VehiculeViewSet, basename="vehicule")
 
 urlpatterns = [
     path(

@@ -41,6 +41,11 @@ from .models import (
     FamilleEquipement,
     ModeleEquipement,
     StatutEquipement,
+    VehiculeProfile,
+)
+
+VEHICULE_PROFILE_FIELDS = frozenset(
+    {"vin", "immatriculation", "genre", "energie", "co2", "puissanceFiscale", "ptac"}
 )
 
 logger = logging.getLogger(__name__)
@@ -550,3 +555,84 @@ def add_document_to_equipement(
     )
     DocumentEquipement.objects.create(equipement=equipement, document=document)
     return document
+
+
+@transaction.atomic
+def create_vehicule(data: dict, files, request_user) -> Equipement:
+    """Cree un vehicule : un Equipement (type VEHICULE) et son VehiculeProfile.
+
+    Reutilise integralement ``create_equipement`` pour la partie generique
+    (lieu, fabricant, fournisseur, famille, compteurs, plans de maintenance),
+    puis cree le ``VehiculeProfile`` associe dans la meme transaction
+    (cf. ADR-001, TUS-005).
+
+    Args:
+        data: Donnees de la requete, melangeant les champs Equipement
+            generiques et les champs specifiques VehiculeProfile (``vin``,
+            ``immatriculation``, ``genre``, ``energie``, ``co2``,
+            ``puissanceFiscale``, ``ptac``).
+        files: ``request.FILES``, transmis tel quel a ``create_equipement``.
+        request_user: ``request.user`` Django, transmis tel quel a
+            ``create_equipement``.
+
+    Returns:
+        L'``Equipement`` cree, avec son ``VehiculeProfile`` deja persiste
+        (accessible via ``equipement.vehicule_profile``).
+
+    Raises:
+        UtilisateurCreateurIntrouvable: Cf. ``create_equipement``.
+        DocumentRequisManquant: Cf. ``create_equipement``.
+        django.core.exceptions.ValidationError: Si les champs du profil
+            véhicule (VIN, immatriculation...) ne respectent pas les
+            validateurs du modèle ``VehiculeProfile``.
+    """
+    vehicule_data = {k: v for k, v in data.items() if k in VEHICULE_PROFILE_FIELDS}
+    equipement_data = {k: v for k, v in data.items() if k not in VEHICULE_PROFILE_FIELDS}
+    equipement_data["type"] = "VEHICULE"
+
+    equipement = create_equipement(equipement_data, files, request_user)
+
+    profile = VehiculeProfile(equipement=equipement, **vehicule_data)
+    profile.full_clean(exclude=["equipement"])
+    profile.save()
+
+    return equipement
+
+
+@transaction.atomic
+def update_vehicule(equipement: Equipement, changes: dict, files) -> Equipement:
+    """Applique un diff de modifications a un vehicule (Equipement + VehiculeProfile).
+
+    Repartit le diff ``changes`` entre les champs generiques (delegues a
+    ``update_equipement``) et les champs du profil vehicule, mis a jour
+    directement ici selon le meme format ``{"nouvelle": valeur}``.
+
+    Args:
+        equipement: Equipement de type VEHICULE a mettre a jour, avec son
+            ``vehicule_profile`` deja existant.
+        changes: Dict ``{champ: {"nouvelle": valeur}}``, champs Equipement et
+            VehiculeProfile melanges.
+        files: ``request.FILES``, transmis a ``update_equipement``.
+
+    Returns:
+        L'``Equipement`` mis a jour.
+    """
+    vehicule_changes = {k: v for k, v in changes.items() if k in VEHICULE_PROFILE_FIELDS}
+    equipement_changes = {k: v for k, v in changes.items() if k not in VEHICULE_PROFILE_FIELDS}
+
+    equipement = update_equipement(equipement, equipement_changes, files)
+
+    if vehicule_changes:
+        profile = equipement.vehicule_profile
+        has_updates = False
+        for field, modification in vehicule_changes.items():
+            nouveau = modification.get("nouvelle")
+            if nouveau is not None and str(getattr(profile, field)) != str(nouveau):
+                setattr(profile, field, nouveau)
+                has_updates = True
+
+        if has_updates:
+            profile.full_clean(exclude=["equipement"])
+            profile.save()
+
+    return equipement

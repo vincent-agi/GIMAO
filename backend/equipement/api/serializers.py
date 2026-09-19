@@ -1,7 +1,7 @@
 import datetime
 from rest_framework import serializers
 from django.db.models import Prefetch
-from equipement.models import Equipement, StatutEquipement, Constituer, ModeleEquipement, Compteur, FamilleEquipement, Declencher
+from equipement.models import Equipement, StatutEquipement, Constituer, ModeleEquipement, Compteur, FamilleEquipement, Declencher, VehiculeProfile
 from donnees.api.serializers import LieuSerializer, FabricantSimpleSerializer, FournisseurSimpleSerializer
 from donnees.models import Fabricant
 from maintenance.models import DemandeIntervention, BonTravail, PlanMaintenance
@@ -490,3 +490,39 @@ class DeclenchementSerializer(serializers.ModelSerializer):
     class Meta:
         model = Declencher
         fields = '__all__'
+
+
+class VehiculeProfileSerializer(serializers.ModelSerializer):
+    """Champs spécifiques automobile d'un véhicule (cf. VehiculeProfile, ADR-001)."""
+
+    class Meta:
+        model = VehiculeProfile
+        fields = ['vin', 'immatriculation', 'genre', 'energie', 'co2', 'puissanceFiscale', 'ptac']
+
+
+class VehiculeSerializer(EquipementSerializer):
+    """Représentation en lecture d'un véhicule : champs Equipement + VehiculeProfile imbriqué."""
+
+    vehicule_profile = VehiculeProfileSerializer(read_only=True)
+
+
+class VehiculeCreateSerializer(EquipementCreateSerializer):
+    """Payload de création d'un véhicule : champs Equipement + VehiculeProfile à plat.
+
+    ``equipement.services.create_vehicule`` répartit ensuite ces champs
+    entre l'``Equipement`` et le ``VehiculeProfile`` créés en une seule
+    transaction (cf. TUS-005).
+    """
+
+    vin = serializers.RegexField(regex=r'^[A-HJ-NPR-Z0-9]{17}$')
+    immatriculation = serializers.RegexField(regex=r'^[A-Z]{2}-\d{3}-[A-Z]{2}$')
+    genre = serializers.ChoiceField(choices=VehiculeProfile.GENRE_CHOICES)
+    energie = serializers.ChoiceField(choices=VehiculeProfile.ENERGIE_CHOICES)
+    co2 = serializers.IntegerField(required=False, allow_null=True)
+    puissanceFiscale = serializers.IntegerField(required=False, allow_null=True)
+    ptac = serializers.IntegerField(required=False, allow_null=True)
+
+    class Meta(EquipementCreateSerializer.Meta):
+        fields = EquipementCreateSerializer.Meta.fields + [
+            'vin', 'immatriculation', 'genre', 'energie', 'co2', 'puissanceFiscale', 'ptac'
+        ]
