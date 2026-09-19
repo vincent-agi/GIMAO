@@ -137,7 +137,6 @@ import { useStore } from "vuex";
 import BaseListView from "@/components/common/BaseListView.vue";
 import ServerPaginationControls from "@/components/common/ServerPaginationControls.vue";
 import { useApi } from "@/composables/useApi";
-import http from "@/composables/http";
 import { getStatusColor, getStatusLabel } from "@/utils/helpers";
 import { API_BASE_URL } from "@/utils/constants";
 import { extractItems, fetchAllPages } from "@/utils/paginatedApi";
@@ -224,7 +223,7 @@ const downloadingTemplate = ref(false);
 const downloadTemplate = async () => {
   downloadingTemplate.value = true;
   try {
-    const response = await http.get("import/equipements/template/", { responseType: "blob" });
+    const response = await importApi.getRaw("import/equipements/template/", {}, { responseType: "blob" });
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
