@@ -1,0 +1,43 @@
+name: Release
+
+# Se declenche uniquement apres succes du workflow "Tests" sur la branche main.
+# Evite de publier une release si les tests backend/frontend echouent.
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    # Ne tourne que si le workflow "Tests" declencheur s'est termine avec succes.
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # pusher le tag, le CHANGELOG.md et creer la release GitHub
+      issues: write # commenter/fermer les issues resolues
+      pull-requests: write # commenter les PR resolues
+    steps:
+      - name: Recuperer le code source
+        uses: actions/checkout@v4
+        with:
+          # Necessaire : semantic-release analyse tout l'historique des commits
+          # pour determiner le prochain numero de version.
+          fetch-depth: 0
+          ref: main
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Installer les dependances npm
+        run: npm install
+
+      - name: Executer semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
