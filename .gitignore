@@ -1,5 +1,6 @@
 cheat_sheet.txt
 backend/createFiles.sh
+.DS_Store
 
 # Node modules
 node_modules/
