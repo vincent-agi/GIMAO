@@ -29,12 +29,14 @@ from maintenance.models import (
     PlanMaintenance,
     PlanMaintenanceConsommable,
     PlanMaintenanceDocument,
+    TypePlanMaintenance,
 )
 from utilisateur.models import Utilisateur
 
 from .models import (
     Compteur,
     Constituer,
+    ControleTechnique,
     Declencher,
     DocumentEquipement,
     Equipement,
@@ -656,3 +658,77 @@ def update_vehicule(equipement: Equipement, changes: dict, files) -> Equipement:
             profile.save()
 
     return equipement
+
+
+CT_COMPTEUR_NOM = "Échéance Contrôle Technique"
+CT_PLAN_MAINTENANCE_NOM = "Contrôle technique"
+CT_ANTICIPATION_JOURS = 60
+
+
+@transaction.atomic
+def brancher_controle_technique_sur_declencheur(
+    controle_technique: ControleTechnique,
+) -> Declencher | None:
+    """Branche un contrôle technique favorable sur le moteur Compteur/Declencher existant.
+
+    Réutilise integralement le mécanisme de déclenchement préventif déjà en
+    place (``Compteur`` + ``Declencher`` + cron ``tasks.counterCron.
+    update_counter``, cf. TUS-012, ADR-001) plutôt que d'en créer un nouveau :
+    un ``Compteur`` calendaire dédié au CT est créé (ou réutilisé) pour le
+    véhicule, ainsi qu'un ``PlanMaintenance`` "Contrôle technique", et le
+    ``Declencher`` qui les relie est mis à jour avec l'échéance du contrôle.
+
+    N'agit que si ``controle_technique.resultat == "FAVORABLE"`` : un
+    résultat défavorable ou une contre-visite ne redéclenchent pas le
+    préventif (l'échéance normale n'est pas encore atteinte).
+
+    Args:
+        controle_technique: Le contrôle technique venant d'être enregistré.
+
+    Returns:
+        Le ``Declencher`` mis à jour, ou ``None`` si le résultat n'est pas
+        favorable (aucune action effectuée).
+    """
+    if controle_technique.resultat != "FAVORABLE":
+        return None
+
+    equipement = controle_technique.vehicule_profile.equipement
+    derniere = date_to_ordinal_days(controle_technique.date_passage.isoformat())
+    prochaine = date_to_ordinal_days(controle_technique.date_echeance.isoformat())
+
+    compteur, _ = Compteur.objects.get_or_create(
+        equipement=equipement,
+        nomCompteur=CT_COMPTEUR_NOM,
+        defaults={"type": "Calendaire", "unite": "date", "valeurCourante": derniere},
+    )
+
+    plan, _ = PlanMaintenance.objects.get_or_create(
+        equipement=equipement,
+        nom=CT_PLAN_MAINTENANCE_NOM,
+        defaults={
+            "type_plan_maintenance": TypePlanMaintenance.objects.get_or_create(
+                libelle="Préventive systématique"
+            )[0],
+        },
+    )
+
+    declencher, _ = Declencher.objects.get_or_create(
+        compteur=compteur,
+        planMaintenance=plan,
+        defaults={
+            "derniereIntervention": derniere,
+            "prochaineMaintenance": prochaine,
+            "ecartInterventions": prochaine - derniere,
+            "anticipationJours": CT_ANTICIPATION_JOURS,
+        },
+    )
+    declencher.derniereIntervention = derniere
+    declencher.prochaineMaintenance = prochaine
+    declencher.ecartInterventions = prochaine - derniere
+    declencher.anticipationJours = CT_ANTICIPATION_JOURS
+    declencher.save()
+
+    compteur.valeurCourante = derniere
+    compteur.save(update_fields=["valeurCourante"])
+
+    return declencher

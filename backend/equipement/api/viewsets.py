@@ -961,6 +961,9 @@ class ControleTechniqueViewSet(GimaoModelViewSet):
 
     Filtre disponible (query param) : ``vehicule_profile`` — id du véhicule
     dont on veut l'historique des contrôles techniques.
+
+    À la création d'un contrôle technique favorable, branche automatiquement
+    le suivi sur le moteur de déclenchement préventif existant (cf. TUS-012).
     """
 
     queryset = ControleTechnique.objects.select_related("vehicule_profile").all()
@@ -972,3 +975,7 @@ class ControleTechniqueViewSet(GimaoModelViewSet):
         if vehicule_profile_id:
             queryset = queryset.filter(vehicule_profile_id=vehicule_profile_id)
         return queryset
+
+    def perform_create(self, serializer):
+        controle = serializer.save()
+        services.brancher_controle_technique_sur_declencheur(controle)
