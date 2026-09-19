@@ -61,6 +61,16 @@ export default [
     },
   },
   {
+    // modelValue muté directement (objet partagé par référence avec le parent,
+    // via v-model="formData" dans CreateEquipment/EditEquipment). Fonctionne car
+    // la réactivité Vue suit la même référence ; passer à un emit par champ est
+    // un refactor à risque sur un formulaire multi-étapes, non fait ici.
+    files: ['src/components/Forms/EquipmentFormFields.vue'],
+    rules: {
+      'vue/no-mutating-props': 'off',
+    },
+  },
+  {
     ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'public/**'],
   },
   eslintConfigPrettier,
