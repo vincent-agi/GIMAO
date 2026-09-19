@@ -29,8 +29,8 @@ const renderForm = (props = {}) => {
   return render(ConsommableForm, {
     props,
     global: {
-      plugins: [vuetify]
-    }
+      plugins: [vuetify],
+    },
   })
 }
 
@@ -42,9 +42,9 @@ describe('ConsommableForm.vue', () => {
 
   it('affiche le bon titre et pré-remplit les valeurs en mode édition', async () => {
     renderForm({ initialData: { id: 2, designation: 'Boulon', seuilStockFaible: 10 } })
-    
+
     expect(screen.getByText('Modifier le consommable')).toBeDefined()
-    
+
     await waitFor(() => {
       expect(screen.getByDisplayValue('Boulon')).toBeDefined()
       expect(screen.getByDisplayValue('10')).toBeDefined()
@@ -86,7 +86,7 @@ describe('ConsommableForm.vue', () => {
     })
   })
 
-  it('affiche une erreur explicite en cas d\'echec API', async () => {
+  it("affiche une erreur explicite en cas d'echec API", async () => {
     server.use(
       http.post('/api/consommables/', () => {
         return new HttpResponse(null, { status: 403, statusText: 'Droit insuffisant' })

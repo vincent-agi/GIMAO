@@ -62,47 +62,49 @@
       </v-row>
 
       <!-- Note si données partielles -->
-      <p v-if="!loading && !erreur && kpi.mttr_heures === null && kpi.nombre_pannes > 0"
-        class="text-caption text-grey mt-3">
-        * Le MTTR ne peut pas être calculé : aucun bon de travail clôturé ne possède
-        de date de début et de fin renseignées.
+      <p
+        v-if="!loading && !erreur && kpi.mttr_heures === null && kpi.nombre_pannes > 0"
+        class="text-caption text-grey mt-3"
+      >
+        * Le MTTR ne peut pas être calculé : aucun bon de travail clôturé ne possède de date de
+        début et de fin renseignées.
       </p>
     </v-card-text>
   </v-card>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useApi }         from '@/composables/useApi';
-import { API_BASE_URL }   from '@/utils/constants';
+  import { ref, onMounted } from 'vue'
+  import { useApi } from '@/composables/useApi'
+  import { API_BASE_URL } from '@/utils/constants'
 
-// ── Props ────────────────────────────────────────────────────────────────────
-const props = defineProps({
-  equipementId: {
-    type: [Number, String],
-    required: true,
-  },
-});
+  // ── Props ────────────────────────────────────────────────────────────────────
+  const props = defineProps({
+    equipementId: {
+      type: [Number, String],
+      required: true,
+    },
+  })
 
-// ── État ─────────────────────────────────────────────────────────────────────
-const kpiApi  = useApi(API_BASE_URL);
-const loading = ref(true);
-const erreur  = ref(false);
-const kpi     = ref({ nombre_pannes: 0, mtbf_heures: null, mttr_heures: null });
+  // ── État ─────────────────────────────────────────────────────────────────────
+  const kpiApi = useApi(API_BASE_URL)
+  const loading = ref(true)
+  const erreur = ref(false)
+  const kpi = ref({ nombre_pannes: 0, mtbf_heures: null, mttr_heures: null })
 
-// ── Chargement des KPI ───────────────────────────────────────────────────────
-const fetchKpi = async () => {
-  loading.value = true;
-  erreur.value  = false;
-  try {
-    const response = await kpiApi.get(`equipements/${props.equipementId}/kpi/`);
-    kpi.value = response;
-  } catch {
-    erreur.value = true;
-  } finally {
-    loading.value = false;
+  // ── Chargement des KPI ───────────────────────────────────────────────────────
+  const fetchKpi = async () => {
+    loading.value = true
+    erreur.value = false
+    try {
+      const response = await kpiApi.get(`equipements/${props.equipementId}/kpi/`)
+      kpi.value = response
+    } catch {
+      erreur.value = true
+    } finally {
+      loading.value = false
+    }
   }
-};
 
-onMounted(fetchKpi);
+  onMounted(fetchKpi)
 </script>

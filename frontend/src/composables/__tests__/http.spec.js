@@ -1,6 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import api from '../http'
-import axios from 'axios'
 import MockAdapter from 'axios-mock-adapter'
 
 describe('http.js interceptors', () => {
@@ -21,8 +20,8 @@ describe('http.js interceptors', () => {
 
   it('ajoute le token au header si présent dans localStorage', async () => {
     localStorage.setItem('token', 'MY_SECRET_TOKEN')
-    
-    mock.onGet('/test').reply(config => {
+
+    mock.onGet('/test').reply((config) => {
       return [200, { headerToken: config.headers.Authorization }]
     })
 
@@ -30,8 +29,8 @@ describe('http.js interceptors', () => {
     expect(response.data.headerToken).toBe('Bearer MY_SECRET_TOKEN')
   })
 
-  it('n\'ajoute pas le token si absent du localStorage', async () => {
-    mock.onGet('/test').reply(config => {
+  it("n'ajoute pas le token si absent du localStorage", async () => {
+    mock.onGet('/test').reply((config) => {
       return [200, { headerToken: config.headers.Authorization }]
     })
 
@@ -39,7 +38,7 @@ describe('http.js interceptors', () => {
     expect(response.data.headerToken).toBeUndefined()
   })
 
-  it('redirige vers /login et nettoie le localStorage en cas d\'erreur 401', async () => {
+  it("redirige vers /login et nettoie le localStorage en cas d'erreur 401", async () => {
     localStorage.setItem('token', 'bad_token')
     localStorage.setItem('user', 'my_user')
     localStorage.setItem('authTimestamp', '123')
@@ -66,7 +65,7 @@ describe('http.js interceptors', () => {
     } catch (error) {
       expect(error.response.status).toBe(500)
     }
-    
+
     expect(window.location.href).not.toBe('/login')
   })
 })

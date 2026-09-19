@@ -1,21 +1,24 @@
 import csv
-import openpyxl
 import datetime
-from django.utils import timezone
+
+import openpyxl
 from django.http import HttpResponse
+from django.utils import timezone
+
 
 def _format_date_for_export(val):
     if val is None:
-        return ''
+        return ""
     if isinstance(val, datetime.datetime):
         if timezone.is_aware(val):
             val = timezone.localtime(val)
-        return val.strftime('%d/%m/%Y - %H:%M')
+        return val.strftime("%d/%m/%Y - %H:%M")
     if isinstance(val, datetime.date):
-        return val.strftime('%d/%m/%Y - 00:00')
+        return val.strftime("%d/%m/%Y - 00:00")
     if isinstance(val, datetime.time):
-        return val.strftime('%H:%M')
+        return val.strftime("%H:%M")
     return val
+
 
 def generateCsvResponse(data, filename, columns=None, column_labels=None):
     """
@@ -23,8 +26,8 @@ def generateCsvResponse(data, filename, columns=None, column_labels=None):
     If 'columns' is provided, it dictates the order and subset of keys.
     If 'column_labels' is provided, uses human-readable labels as CSV headers.
     """
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
 
     if not data:
         return response
@@ -39,17 +42,20 @@ def generateCsvResponse(data, filename, columns=None, column_labels=None):
         headers = columns
 
     # Write UTF-8 BOM so Excel opens it correctly with accents
-    response.write('\ufeff')
+    response.write("\ufeff")
 
-    writer = csv.writer(response, delimiter=';')
+    writer = csv.writer(response, delimiter=";")
     writer.writerow(headers)
     for row in data:
-        writer.writerow([
-            str(_format_date_for_export(row.get(col))) if row.get(col) is not None else ''
-            for col in columns
-        ])
+        writer.writerow(
+            [
+                str(_format_date_for_export(row.get(col))) if row.get(col) is not None else ""
+                for col in columns
+            ]
+        )
 
     return response
+
 
 def generateXlsxResponse(data, filename, columns=None, column_labels=None):
     """
@@ -57,9 +63,9 @@ def generateXlsxResponse(data, filename, columns=None, column_labels=None):
     If 'column_labels' is provided, uses human-readable labels as sheet headers.
     """
     response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response['Content-Disposition'] = f'attachment; filename="{filename}.xlsx"'
+    response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
 
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
@@ -83,8 +89,8 @@ def generateXlsxResponse(data, filename, columns=None, column_labels=None):
 
     def _clean_for_excel(val):
         val = _format_date_for_export(val)
-        if val is None or val == '':
-            return ''
+        if val is None or val == "":
+            return ""
         if isinstance(val, (int, float)):
             return val
         return str(val)
@@ -96,6 +102,7 @@ def generateXlsxResponse(data, filename, columns=None, column_labels=None):
 
     # Adjust column widths so dates/long texts don't show up as '######'
     from openpyxl.utils import get_column_letter
+
     for col_idx, column_cells in enumerate(worksheet.columns, 1):
         max_length = 0
         column_letter = get_column_letter(col_idx)
@@ -105,7 +112,7 @@ def generateXlsxResponse(data, filename, columns=None, column_labels=None):
                     max_length = max(max_length, len(str(cell.value)))
                 except Exception:
                     pass
-        adjusted_width = min(max_length + 2, 50) # Cap maximum width at 50 to avoid giant columns
+        adjusted_width = min(max_length + 2, 50)  # Cap maximum width at 50 to avoid giant columns
         # Ensure a minimum width so headers don't get squished either
         adjusted_width = max(adjusted_width, 10)
         worksheet.column_dimensions[column_letter].width = adjusted_width

@@ -1,9 +1,7 @@
 <template>
   <v-app>
-
     <!-- Navigation (si page privée ET utilisateur a menu) -->
-    <template v-if="!isPublicPage && userHasMenu  && !isNoticePage">
-
+    <template v-if="!isPublicPage && userHasMenu && !isNoticePage">
       <!-- Sidebar desktop -->
       <Sidebar v-if="!isMobile && userHasMenu" />
 
@@ -28,7 +26,6 @@
           <v-icon>{{ themeToggleIcon }}</v-icon>
         </v-btn>
       </v-app-bar>
-
     </template>
 
     <v-main>
@@ -54,82 +51,77 @@
       aria-label="Ouvrir les notices d'utilisation"
       @click="goToNotices"
     />
-
   </v-app>
 </template>
 
-
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { useStore } from 'vuex'
-import { useRoute, useRouter } from 'vue-router'
+  import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+  import { useStore } from 'vuex'
+  import { useRoute, useRouter } from 'vue-router'
 
-import Sidebar from '@/components/SideBar.vue'
-import TopBar from '@/components/TopBar.vue'
-import Breadcrumb from '@/components/Breadcrumb.vue'
-import vuetify from '@/plugins/vuetify'
-import { toggleTheme } from '@/utils/theme'
+  import Sidebar from '@/components/SideBar.vue'
+  import TopBar from '@/components/TopBar.vue'
+  import Breadcrumb from '@/components/Breadcrumb.vue'
+  import vuetify from '@/plugins/vuetify'
+  import { toggleTheme } from '@/utils/theme'
 
-const store = useStore()
-const route = useRoute()
-const router = useRouter()
+  const store = useStore()
+  const route = useRoute()
+  const router = useRouter()
 
-/**
- * Mobile
- */
-const isMobile = ref(false)
+  /**
+   * Mobile
+   */
+  const isMobile = ref(false)
 
-const checkIfMobile = () => {
-  isMobile.value = window.innerWidth < 960 // breakpoint md Vuetify
-}
+  const checkIfMobile = () => {
+    isMobile.value = window.innerWidth < 960 // breakpoint md Vuetify
+  }
 
-/**
- * Auth / rôles
- */
-const userRole = computed(() => store.getters.userRole)
+  const userHasMenu = computed(() => {
+    return (
+      store.getters.hasPermission('menu:view') || store.getters.hasPermission('menu:dataManagement')
+    )
+  })
 
+  /**
+   * Pages publiques
+   */
+  const isPublicPage = computed(() => route.meta?.public === true)
 
-const userHasMenu = computed(() => {
-  return store.getters.hasPermission('menu:view') || store.getters.hasPermission('menu:dataManagement')
-})
+  /**
+   * Titre page
+   */
+  const pageTitle = computed(() => route.meta?.title || 'GIMAO')
+  const isDarkTheme = computed(() => vuetify.theme.global.current.value.dark)
+  const themeToggleIcon = computed(() =>
+    isDarkTheme.value ? 'mdi-weather-sunny' : 'mdi-weather-night'
+  )
+  const themeToggleLabel = computed(() =>
+    isDarkTheme.value ? 'Activer le mode clair' : 'Activer le mode sombre'
+  )
 
-/**
- * Pages publiques
- */
-const isPublicPage = computed(() => route.meta?.public === true)
+  const handleThemeToggle = () => {
+    toggleTheme()
+  }
 
-/**
- * Titre page
- */
-const pageTitle = computed(() => route.meta?.title || 'GIMAO')
-const isDarkTheme = computed(() => vuetify.theme.global.current.value.dark)
-const themeToggleIcon = computed(() => (isDarkTheme.value ? 'mdi-weather-sunny' : 'mdi-weather-night'))
-const themeToggleLabel = computed(() => (
-  isDarkTheme.value ? 'Activer le mode clair' : 'Activer le mode sombre'
-))
+  const isNoticePage = computed(() => route.name === 'Notice')
 
-const handleThemeToggle = () => {
-  toggleTheme()
-}
+  const goToNotices = () => {
+    router.push('/Notice')
+  }
 
+  /**
+   * Lifecycle
+   */
+  onMounted(() => {
+    store.dispatch('initAuth')
 
-const isNoticePage = computed(() => route.name === 'Notice')
+    checkIfMobile()
+    window.addEventListener('resize', checkIfMobile)
+  })
 
-const goToNotices = () => {
-  router.push('/Notice')
-}
-
-/**
- * Lifecycle
- */
-onMounted(() => {
-  store.dispatch('initAuth')
-
-  checkIfMobile()
-  window.addEventListener('resize', checkIfMobile)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', checkIfMobile)
-})
+  onBeforeUnmount(() => {
+    window.removeEventListener('resize', checkIfMobile)
+  })
 </script>

@@ -14,8 +14,8 @@ const renderComponent = (props = {}) => {
   return render(ConfirmationModal, {
     props,
     global: {
-      plugins: [vuetify]
-    }
+      plugins: [vuetify],
+    },
   })
 }
 
@@ -24,27 +24,27 @@ describe('ConfirmationModal.vue', () => {
 
   it('ne rend pas le contenu de la modale si modelValue est false (fermé par defaut)', () => {
     renderComponent({ modelValue: false })
-    
+
     // Le texte de la modale ne doit pas être présent sur l'écran
     expect(screen.queryByText('Confirmation requise')).toBeNull()
   })
 
-  it('affiche le titre et le message quand la modale s\'ouvre', async () => {
+  it("affiche le titre et le message quand la modale s'ouvre", async () => {
     // Rend avec true
-    renderComponent({ 
+    renderComponent({
       modelValue: true,
       title: 'Suppression',
-      message: 'Voulez-vous supprimer ce fichier ?'
+      message: 'Voulez-vous supprimer ce fichier ?',
     })
 
     // Recherche de la modale. Les modals Vuetify 3 sont insérées direct avec aria-attributes
     const modalText = await screen.findByText('Voulez-vous supprimer ce fichier ?')
     expect(modalText).not.toBeNull()
-    
+
     expect(screen.getByText('Suppression')).not.toBeNull()
   })
 
-  it('émet l\'événement confirm quand le bouton Confirmer est cliqué', async () => {
+  it("émet l'événement confirm quand le bouton Confirmer est cliqué", async () => {
     const { emitted } = renderComponent({ modelValue: true })
     const user = userEvent.setup()
 
@@ -66,13 +66,13 @@ describe('ConfirmationModal.vue', () => {
 
     // Vérifie qu'il envoie l'événement d'annulation standard
     expect(emitted().cancel).toBeTruthy()
-    
+
     // Vérifie qu'il ferme la modale en envoyant false sur v-model
     expect(emitted()['update:modelValue'][0]).toEqual([false])
   })
 
   it('Affiche les textes des boutons personnalisés', async () => {
-    renderComponent({ 
+    renderComponent({
       modelValue: true,
       confirmText: 'Oui, détruire',
       cancelText: 'Non, garder',

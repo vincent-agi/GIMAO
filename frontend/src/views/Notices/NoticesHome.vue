@@ -34,10 +34,9 @@
           <template #prepend>
             <v-icon class="ml-3">{{ item.icon }}</v-icon>
           </template>
-          <v-list-item-title
-            v-html="item.label"
-            :class="[{ 'hoverable': isMini }, { 'normal': !isMini }]"
-          />
+          <v-list-item-title :class="[{ hoverable: isMini }, { normal: !isMini }]">{{
+            item.label
+          }}</v-list-item-title>
         </v-list-item>
       </v-list>
 
@@ -66,12 +65,12 @@
     <div class="notices-content">
       <div class="notices-topbar">
         <!-- Hamburger sur mobile -->
-        <v-btn v-if="isMobile" icon @click="drawerOpen = !drawerOpen" class="mr-2">
+        <v-btn v-if="isMobile" icon class="mr-2" @click="drawerOpen = !drawerOpen">
           <v-icon>mdi-menu</v-icon>
         </v-btn>
         <span>{{ currentNotice.label }}</span>
         <v-spacer></v-spacer>
-        <v-btn icon @click="handleThemeToggle" :title="themeToggleLabel">
+        <v-btn icon :title="themeToggleLabel" @click="handleThemeToggle">
           <v-icon>{{ themeToggleIcon }}</v-icon>
         </v-btn>
       </div>
@@ -89,139 +88,143 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+  import { ref, computed, onMounted, onUnmounted } from 'vue'
+  import { useRouter } from 'vue-router'
 
-import NoticeGlobale from '@/views/Notices/NoticeGlobale.vue'
-import NoticeOperateur from '@/views/Notices/NoticeOperateur.vue'
-import NoticeTechnicien from '@/views/Notices/NoticeTechnicien.vue'
-import NoticeMagasinier from '@/views/Notices/NoticeMagasinier.vue'
-import NoticeResponsable from '@/views/Notices/NoticeResponsable.vue'
+  import NoticeGlobale from '@/views/Notices/NoticeGlobale.vue'
+  import NoticeOperateur from '@/views/Notices/NoticeOperateur.vue'
+  import NoticeTechnicien from '@/views/Notices/NoticeTechnicien.vue'
+  import NoticeMagasinier from '@/views/Notices/NoticeMagasinier.vue'
+  import NoticeResponsable from '@/views/Notices/NoticeResponsable.vue'
 
-import vuetify from '@/plugins/vuetify'
-import { toggleTheme } from '@/utils/theme'
+  import vuetify from '@/plugins/vuetify'
+  import { toggleTheme } from '@/utils/theme'
 
-import logo from '@/assets/images/LogoGIMAO.png'
+  import logo from '@/assets/images/LogoGIMAO.png'
 
-const noticeItems = [
-  { value: 'global', label: 'Générale', icon: 'mdi-book-open-variant' },
-  { value: 'operateur', label: 'Opérateur', icon: 'mdi-account-hard-hat' },
-  { value: 'technicien', label: 'Technicien', icon: 'mdi-wrench' },
-  { value: 'magasinier', label: 'Magasinier', icon: 'mdi-package-variant-closed' },
-  { value: 'responsable', label: 'Responsable', icon: 'mdi-shield-account' },
-]
+  const noticeItems = [
+    { value: 'global', label: 'Générale', icon: 'mdi-book-open-variant' },
+    { value: 'operateur', label: 'Opérateur', icon: 'mdi-account-hard-hat' },
+    { value: 'technicien', label: 'Technicien', icon: 'mdi-wrench' },
+    { value: 'magasinier', label: 'Magasinier', icon: 'mdi-package-variant-closed' },
+    { value: 'responsable', label: 'Responsable', icon: 'mdi-shield-account' },
+  ]
 
-const tab = ref('global')
-const isMini = ref(false)
-const isHovered = ref(false)
-const isMobile = ref(window.innerWidth < 960)
-const drawerOpen = ref(!isMobile.value)
+  const tab = ref('global')
+  const isMini = ref(false)
+  const isHovered = ref(false)
+  const isMobile = ref(window.innerWidth < 960)
+  const drawerOpen = ref(!isMobile.value)
 
-const checkMobile = () => {
-  isMobile.value = window.innerWidth < 960
-  if (!isMobile.value) drawerOpen.value = true
-  else drawerOpen.value = false
-}
-
-onMounted(() => window.addEventListener('resize', checkMobile))
-onUnmounted(() => window.removeEventListener('resize', checkMobile))
-
-const displayTitles = computed(() => !isMini.value || isHovered.value || isMobile.value)
-const drawerWidth = computed(() => (isMobile.value || displayTitles.value) ? 280 : 80)
-
-const currentNotice = computed(() =>
-  noticeItems.find(n => n.value === tab.value) || noticeItems[0]
-)
-
-const toggleMini = () => { isMini.value = !isMini.value }
-
-const selectTab = (value) => {
-  tab.value = value
-  if (isMobile.value) drawerOpen.value = false
-}
-
-const isDarkTheme = computed(() => vuetify.theme.global.current.value.dark)
-const themeToggleIcon = computed(() => (isDarkTheme.value ? 'mdi-weather-sunny' : 'mdi-weather-night'))
-const themeToggleLabel = computed(() => (
-  isDarkTheme.value ? 'Activer le mode clair' : 'Activer le mode sombre'
-))
-
-const handleThemeToggle = () => {
-  toggleTheme()
-}
-
-const router = useRouter()
-const goBack = () => {
-  if (window.history.length > 1) {
-    router.back()
-    return
+  const checkMobile = () => {
+    isMobile.value = window.innerWidth < 960
+    if (!isMobile.value) drawerOpen.value = true
+    else drawerOpen.value = false
   }
-  router.push('/')
-}
+
+  onMounted(() => window.addEventListener('resize', checkMobile))
+  onUnmounted(() => window.removeEventListener('resize', checkMobile))
+
+  const displayTitles = computed(() => !isMini.value || isHovered.value || isMobile.value)
+  const drawerWidth = computed(() => (isMobile.value || displayTitles.value ? 280 : 80))
+
+  const currentNotice = computed(
+    () => noticeItems.find((n) => n.value === tab.value) || noticeItems[0]
+  )
+
+  const toggleMini = () => {
+    isMini.value = !isMini.value
+  }
+
+  const selectTab = (value) => {
+    tab.value = value
+    if (isMobile.value) drawerOpen.value = false
+  }
+
+  const isDarkTheme = computed(() => vuetify.theme.global.current.value.dark)
+  const themeToggleIcon = computed(() =>
+    isDarkTheme.value ? 'mdi-weather-sunny' : 'mdi-weather-night'
+  )
+  const themeToggleLabel = computed(() =>
+    isDarkTheme.value ? 'Activer le mode clair' : 'Activer le mode sombre'
+  )
+
+  const handleThemeToggle = () => {
+    toggleTheme()
+  }
+
+  const router = useRouter()
+  const goBack = () => {
+    if (window.history.length > 1) {
+      router.back()
+      return
+    }
+    router.push('/')
+  }
 </script>
 
 <style scoped>
-.notices-layout {
-  display: flex;
-  min-height: 100vh;
-}
+  .notices-layout {
+    display: flex;
+    min-height: 100vh;
+  }
 
-.notices-sidebar {
-  transition: width 0.25s ease;
-}
+  .notices-sidebar {
+    transition: width 0.25s ease;
+  }
 
-.logo-item {
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
+  .logo-item {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
 
-.notices-content {
-  flex: 1;
-  min-width: 0;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
-}
+  .notices-content {
+    flex: 1;
+    min-width: 0;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+  }
 
-.notices-topbar {
-  background: rgb(var(--v-theme-surface));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  height: 64px;
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: rgb(var(--v-theme-primary));
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
+  .notices-topbar {
+    background: rgb(var(--v-theme-surface));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    height: 64px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: rgb(var(--v-theme-primary));
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
 
-.active-item {
-  background-color: #5d5fef;
-}
-.active-item .v-list-item-title,
-.active-item .v-icon {
-  color: white !important;
-}
-.active-item:hover {
-  background-color: #5d5fef !important;
-}
+  .active-item {
+    background-color: #5d5fef;
+  }
+  .active-item .v-list-item-title,
+  .active-item .v-icon {
+    color: white !important;
+  }
+  .active-item:hover {
+    background-color: #5d5fef !important;
+  }
 
-.menu-toggle-wrapper {
-  display: flex;
-  justify-content: center;
-  padding: 8px;
-}
-.menu-toggle-btn {
-  width: 100%;
-  max-width: 240px;
-  font-weight: 600;
-}
+  .menu-toggle-wrapper {
+    display: flex;
+    justify-content: center;
+    padding: 8px;
+  }
+  .menu-toggle-btn {
+    width: 100%;
+    max-width: 240px;
+    font-weight: 600;
+  }
 </style>

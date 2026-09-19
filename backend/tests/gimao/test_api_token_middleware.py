@@ -1,6 +1,7 @@
+import json
+
 import pytest
 from django.test import RequestFactory
-import json
 
 from gimao.middleware import ApiTokenMiddleware
 from security.models import ApiToken, create_token

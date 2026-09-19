@@ -37,9 +37,22 @@ Pour installer l'application sans passer par les commandes Docker manuelles, un 
 
 ### 2. Installation
 
+**Windows**
+
 1. Récupérer le projet (clone Git ou téléchargement du dossier).
 2. Ouvrir le dossier du projet.
 3. Double-cliquer sur **`install.bat`**.
+4. Attendre la fin du script : l'application s'ouvre automatiquement dans le navigateur sur `http://localhost`.
+
+**Linux / macOS**
+
+1. Récupérer le projet (clone Git ou téléchargement du dossier).
+2. Ouvrir un terminal dans le dossier du projet.
+3. Exécuter :
+   ```bash
+   ./install.sh
+   ```
+   (rendre le script exécutable si besoin : `chmod +x install.sh`)
 4. Attendre la fin du script : l'application s'ouvre automatiquement dans le navigateur sur `http://localhost`.
 
 Un seul compte est créé automatiquement, avec le rôle Responsable GMAO :
@@ -50,11 +63,17 @@ Aucune donnée n'est préchargée. Un jeu de données de démonstration peut êt
 
 ### 3. Mettre à jour l'application
 
-Une fois installée, pour récupérer une nouvelle version : double-cliquer sur **`update.bat`**, à la racine du projet. Les données existantes sont conservées.
+Une fois installée, pour récupérer une nouvelle version :
+- Windows : double-cliquer sur **`update.bat`**, à la racine du projet.
+- Linux / macOS : exécuter **`./update.sh`**, à la racine du projet.
+
+Les données existantes sont conservées.
 
 ### Aller plus loin
 
-Le script `install.bat` s'appuie sur Docker Compose et les images publiées sur Docker Hub. Pour comprendre en détail ce qu'il fait, l'adapter, ou pour un déploiement manuel (variables d'environnement, initialisation des données, gestion des conteneurs), voir la section [Déploiement en production](#déploiement-en-production).
+Les scripts `install.bat` (Windows) et `install.sh` (Linux / macOS) s'appuient sur Docker Compose et les images publiées sur Docker Hub. Pour comprendre en détail ce qu'ils font, les adapter, ou pour un déploiement manuel (variables d'environnement, initialisation des données, gestion des conteneurs), voir la section [Déploiement en production](#déploiement-en-production).
+
+Pour repartir de zéro (données effacées), utiliser `reinstall.bat` (Windows) ou `./reinstall.sh` (Linux / macOS).
 
 ---
 

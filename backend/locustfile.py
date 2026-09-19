@@ -25,7 +25,6 @@ from typing import Any
 from locust import HttpUser, between, task
 from locust.exception import StopUser
 
-
 LOGGER = logging.getLogger(__name__)
 
 

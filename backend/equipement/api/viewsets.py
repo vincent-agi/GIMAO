@@ -1,46 +1,53 @@
-import json
 import datetime
-from decimal import Decimal
+import json
+
+from django.db import transaction
 from django.db.models import Prefetch
-from rest_framework import viewsets, status
-from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
-from django.db import transaction
-from django.utils import timezone
-from django.shortcuts import get_object_or_404
+from rest_framework.response import Response
 
 # Models
-from maintenance.models import DemandeIntervention, BonTravail
 from donnees.models import Document
-from stock.models import Consommable
-from equipement.models import *
-from utilisateur.models import Utilisateur, Log
+from equipement import services
 
 # Serializers
 from equipement.api.serializers import (
-    EquipementSerializer,
-    StatutEquipementSerializer,
-    ConstituerSerializer,
-    ModeleEquipementSerializer,
     CompteurSerializer,
-    FamilleEquipementSerializer,
+    ConstituerSerializer,
+    DeclenchementSerializer,
     EquipementAffichageSerializer,
     EquipementCreateSerializer,
-    DeclenchementSerializer
+    EquipementSerializer,
+    FamilleEquipementSerializer,
+    ModeleEquipementSerializer,
+    StatutEquipementSerializer,
+    VehiculeCreateSerializer,
+    VehiculeSerializer,
 )
-
+from equipement.models import (
+    Compteur,
+    Constituer,
+    Declencher,
+    DocumentEquipement,
+    Equipement,
+    FamilleEquipement,
+    ModeleEquipement,
+    StatutEquipement,
+)
+from gimao.mixins import ArchivableViewSetMixin
+from gimao.pagination import LargePagination
+from gimao.viewsets import GimaoModelViewSet
 from maintenance.models import (
+    BonTravailDocument,
+    DemandeInterventionDocument,
     PlanMaintenance,
     PlanMaintenanceConsommable,
     PlanMaintenanceDocument,
-    DemandeInterventionDocument,
-    BonTravailDocument,
 )
-from donnees.models import Lieu, Document, Fabricant, Fournisseur
-from gimao.viewsets import GimaoModelViewSet
-from gimao.mixins import ArchivableViewSetMixin
-from gimao.pagination import LargePagination
+from utilisateur.models import Log
 
 
 class EquipementListPagination(LargePagination):
@@ -60,7 +67,13 @@ class EquipementViewSet(ArchivableViewSetMixin, GimaoModelViewSet):
         GET   /api/equipements/{id}/historique_statuts/ — historique chronologique des changements de statut.
         GET   /api/equipements/{id}/kpi/              — indicateurs MTBF, MTTR, nombre de pannes.
         POST  /api/equipements/{id}/add_document/     — attache un fichier à l'équipement.
+
+    La logique métier (création/mise à jour imbriquée, archivage en cascade,
+    calcul de KPI) est déléguée au module ``equipement.services`` : ce
+    ViewSet ne fait que router, sérialiser et traduire les erreurs métier en
+    réponses HTTP (cf. ADR-001, TUS-003).
     """
+
     queryset = Equipement.objects.select_related("lieu", "modele").prefetch_related(
         Prefetch(
             "documents",
@@ -75,7 +88,7 @@ class EquipementViewSet(ArchivableViewSetMixin, GimaoModelViewSet):
                 "equipement_id",
             ).order_by("-dateChangement"),
             to_attr="prefetched_statuts",
-        )
+        ),
     )
     pagination_class = EquipementListPagination
     filter_backends = [SearchFilter, OrderingFilter]
@@ -101,164 +114,65 @@ class EquipementViewSet(ArchivableViewSetMixin, GimaoModelViewSet):
         return queryset
 
     def get_serializer_class(self):
-        if self.action == 'create':
+        if self.action == "create":
             return EquipementCreateSerializer
         return EquipementSerializer
 
-    @action(detail=True, methods=['patch'], url_path='set-archive')
+    @action(detail=True, methods=["patch"], url_path="set-archive")
     @transaction.atomic
     def set_archive(self, request, pk=None):
-        """Surcharge pour clôturer tous les bons de travail liés lors de l'archivage"""
+        """Archive l'équipement puis clôture en cascade ses DI/BT liés."""
         response = super().set_archive(request, pk=pk)
-        print(f"Archiving")
-        
+
         if response.status_code == status.HTTP_200_OK:
             instance = self.get_object()
             if instance.archive:
-                print(f"Instance: {instance}")
-                from maintenance.models import BonTravail, DemandeIntervention
-                from django.utils import timezone
-                
-                # Archiver toutes les demandes d'interventions liées
-                dis_a_archiver = DemandeIntervention.objects.filter(equipement=instance)
-                for di in dis_a_archiver:
-                    di.archive = True
-                    di.save(update_fields=['archive'])
+                services.archive_equipement_cascade(instance)
 
-                # Tous les bons de travail liés (via les demandes d'intervention) prennent le statut 'TERMINE'
-                bons_a_terminer = BonTravail.objects.filter(
-                    demande_intervention__equipement=instance
-                )
-                
-                for bt in bons_a_terminer:
-                    bt.statut = 'TERMINE' if bt.statut != 'CLOTURE' else bt.statut
-                    bt.date_fin = timezone.now()
-                    bt.archive = True
-                    bt.save(update_fields=['statut', 'date_fin', 'archive'])
-                
         return response
 
-    @action(detail=True, methods=['get'], url_path='historique_statuts')
+    @action(detail=True, methods=["get"], url_path="historique_statuts")
     def historique_statuts(self, request, pk=None):
-        """
-        Retourne l'historique chronologique des statuts d'un équipement.
-        Chaque entrée contient le statut et sa date de changement.
-        Le frontend calcule ensuite les plages (du statut N au statut N+1).
-        """
-        equipement = self.get_object()
-        statuts = (
-            StatutEquipement.objects
-            .filter(equipement=equipement)
-            .order_by('dateChangement')
-            .values('statut', 'dateChangement')
-        )
-        return Response(list(statuts))
+        """Retourne l'historique chronologique des statuts d'un équipement."""
+        return Response(services.get_historique_statuts(self.get_object()))
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=["get"])
     def kpi(self, request, pk=None):
-        """
-        Calcule les indicateurs de maintenance corrective pour un équipement :
-        - Nombre de pannes (DI confirmées)
-        - MTBF en heures (temps moyen entre deux pannes)
-        - MTTR en heures (temps moyen de réparation)
-        """
-        equipement = self.get_object()
-        today = timezone.now()
+        """Retourne le nombre de pannes, le MTBF et le MTTR de l'équipement."""
+        return Response(services.compute_equipement_kpi(self.get_object()))
 
-        # ── Nombre de pannes ────────────────────────────────────────────────
-        # On considère qu'une panne est confirmée dès que la DI est ACCEPTEE
-        # ou TRANSFORMEE (transformée en BT correctif).
-        pannes = DemandeIntervention.objects.filter(
-            equipement=equipement,
-            statut__in=['ACCEPTEE', 'TRANSFORMEE'],
-            archive=False
-        ).order_by('date_creation')
-
-        nombre_pannes = pannes.count()
-
-        # ── MTBF (Mean Time Between Failures) ───────────────────────────────
-        # Formule : durée totale observée ÷ nombre de pannes, exprimée en heures
-        # Point de départ : dateMiseEnService, ou à défaut la première DI
-        mtbf_heures = None
-        if nombre_pannes > 0:
-            date_debut_observation = (
-                equipement.dateMiseEnService
-                or pannes.first().date_creation
-            )
-            duree_totale_heures = (today - date_debut_observation).total_seconds() / 3600
-            if duree_totale_heures > 0:
-                mtbf_heures = round(duree_totale_heures / nombre_pannes, 1)
-
-        # ── MTTR (Mean Time To Repair) ───────────────────────────────────────
-        # Formule : moyenne de (date_fin - date_debut) sur les BT correctifs terminés,
-        # exprimée en heures. On ignore les BT sans date_debut ou date_fin.
-        mttr_heures = None
-        bts_termines = BonTravail.objects.filter(
-            demande_intervention__equipement=equipement,
-            type='CORRECTIF',
-            statut__in=['TERMINE', 'CLOTURE'],
-            date_debut__isnull=False,
-            date_fin__isnull=False,
-            archive=False
-        )
-
-        if bts_termines.exists():
-            durees = [
-                (bt.date_fin - bt.date_debut).total_seconds() / 3600
-                for bt in bts_termines
-                if bt.date_fin >= bt.date_debut
-            ]
-            if durees:
-                mttr_heures = round(sum(durees) / len(durees), 1)
-
-        return Response({
-            'nombre_pannes': nombre_pannes,
-            'mtbf_heures':   mtbf_heures,
-            'mttr_heures':   mttr_heures,
-        })
-
-    @action(detail=True, methods=['post'])
-    @transaction.atomic
+    @action(detail=True, methods=["post"])
     def add_document(self, request, pk=None):
-        """Ajoute un document directement lié à l'équipement"""
-        equipement = self.get_object()
-        uploaded_file = request.FILES.get('file')
-        nom = request.data.get('nomDocument', '').strip()
-        type_id = request.data.get('typeDocument_id')
+        """Attache un document uploadé directement à l'équipement."""
+        try:
+            document = services.add_document_to_equipement(
+                self.get_object(),
+                request.FILES.get("file"),
+                request.data.get("nomDocument", ""),
+                request.data.get("typeDocument_id"),
+            )
+        except services.DocumentRequisManquant as exc:
+            return Response({"error": exc.message}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not uploaded_file:
-            return Response({'error': 'Fichier requis'}, status=status.HTTP_400_BAD_REQUEST)
-        if not type_id:
-            return Response({'error': 'Type de document requis'}, status=status.HTTP_400_BAD_REQUEST)
-
-        document = Document.objects.create(
-            nomDocument=nom or uploaded_file.name,
-            typeDocument_id=type_id,
-            cheminAcces=uploaded_file
+        return Response(
+            {"id": document.id, "nomDocument": document.nomDocument},
+            status=status.HTTP_201_CREATED,
         )
-        DocumentEquipement.objects.create(equipement=equipement, document=document)
 
-        return Response({'id': document.id, 'nomDocument': document.nomDocument}, status=status.HTTP_201_CREATED)
+    @staticmethod
+    def _normalize_create_payload(raw_data: dict) -> dict:
+        """Normalise un payload FormData de création (listes à un élément, JSON imbriqué)."""
+        data = dict(raw_data)
 
-    @transaction.atomic
-    def create(self, request, *args, **kwargs):
-        """Création d'un nouvel équipement"""
-        data = dict(request.data)
-        print('Données de la requête de création d\'équipement:')
-        print(data)
-        
-        # Extraire les valeurs uniques des listes
-        for key, value in data.items():
+        for key, value in list(data.items()):
             if isinstance(value, list) and len(value) == 1:
                 data[key] = value[0]
 
-        # Normalisation
         if "lieu" in data:
             lieu_value = data["lieu"]
             if isinstance(lieu_value, str):
                 try:
-                    lieu_obj = json.loads(lieu_value)
-                    data["lieu"] = lieu_obj["id"]
+                    data["lieu"] = json.loads(lieu_value)["id"]
                 except (TypeError, ValueError, KeyError):
                     pass
             elif isinstance(lieu_value, dict):
@@ -268,245 +182,42 @@ class EquipementViewSet(ArchivableViewSetMixin, GimaoModelViewSet):
             if field in data and isinstance(data[field], str):
                 data[field] = json.loads(data[field])
 
-        # Validation serializer
+        return data
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        """Crée un équipement avec ses consommables, compteurs et plans de maintenance imbriqués."""
+        data = self._normalize_create_payload(request.data)
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
 
-        # Récupération de l'utilisateur créateur
-        utilisateur = None
-        if hasattr(request, 'user') and request.user.is_authenticated:
-            try:
-                utilisateur = Utilisateur.objects.filter(nomUtilisateur=request.user.username).first()
-                if not utilisateur and hasattr(request.user, 'utilisateur'):
-                     utilisateur = request.user.utilisateur
-            except:
-                pass
-        
-        if not utilisateur and "createurEquipement" in data and data["createurEquipement"]:
-            try:
-                utilisateur = Utilisateur.objects.get(id=data["createurEquipement"])
-            except Utilisateur.DoesNotExist:
-                utilisateur = None
-        
-        if not utilisateur:
-            return Response(
-                {"error": "Utilisateur non authentifié ou introuvable"},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        # Récupération des dépendances
-        modele_id = data.get("modeleEquipement")
-        modele = ModeleEquipement.objects.get(id=modele_id) if modele_id else None
-        fabricant = Fabricant.objects.get(id=data["fabricant"])
-        fournisseur = Fournisseur.objects.get(id=data["fournisseur"])
-        famille = FamilleEquipement.objects.get(id=data["famille"])
-        lieu = Lieu.objects.get(id=data["lieu"])
-
-        # Création de l'équipement
-        equipement = Equipement.objects.create(
-            reference=data["reference"],
-            designation=data["designation"],
-            dateMiseEnService=data.get("dateMiseEnService"),
-            prixAchat=data.get("prixAchat", 0),
-            createurEquipement=utilisateur,
-            lieu=lieu,
-            modele=modele,
-            famille=famille,
-            fournisseur=fournisseur,
-            fabricant=fabricant,
-            numSerie=data.get("numSerie", ""),
-            type=data.get("type") or None,
-            lienImage=data.get("lienImageEquipement")
-        )
-
-        # Statut
-        statut = data.get("statut") 
-        if statut:
-            StatutEquipement.objects.create(
-                equipement=equipement,
-                statut=statut,
-                dateChangement=timezone.now()
-            )
-
-        # Consommables
-        for consommable_id in data.get("consommables", []):
-            Constituer.objects.create(
-                equipement=equipement,
-                consommable_id=consommable_id
-            )
-
-        # Créer les compteurs (sans les plans de maintenance)
-        compteurs_crees = []
-        for cp in data.get("compteurs", []):
-            compteur = Compteur.objects.create(
-                equipement=equipement,
-                nomCompteur=cp["nom"],
-                valeurCourante=cp.get("valeurCourante", 0),
-                unite=cp.get("unite", "heures"),
-                estPrincipal=cp.get("estPrincipal", False),
-                type=cp.get("type", "Numérique")
-            )
-            compteurs_crees.append(compteur)
-
-        # Créer les plans de maintenance (qui référencent les compteurs par index)
-        for pm_index, pm_data in enumerate(data.get("plansMaintenance", [])):
-            compteur_index = pm_data.get("compteurIndex")
-            if compteur_index is None or compteur_index >= len(compteurs_crees):
-                continue
-            
-            compteur = compteurs_crees[compteur_index]
-            
-            # Créer le plan de maintenance
-            plan = PlanMaintenance.objects.create(
-                equipement=equipement,
-                nom=pm_data.get("nom", f"Plan {compteur.nomCompteur}"),
-                type_plan_maintenance_id=pm_data.get("type_id"),
-                commentaire=pm_data.get("description", ""),
-                necessiteHabilitationElectrique=pm_data.get("necessiteHabilitationElectrique", False),
-                necessitePermisFeu=pm_data.get("necessitePermisFeu", False)
-            )
-
-            # Créer le lien Declencher entre le compteur et le plan
-            seuil = pm_data.get("seuil", {})
-            self.create_declencher(compteur, plan, seuil)
-
-            # Consommables du plan
-            for consommable_data in pm_data.get("consommables", []):
-                # Support pour nouveau format {consommable_id, quantite_necessaire}
-                if isinstance(consommable_data, dict):
-                    consommable_id = consommable_data.get('consommable_id')
-                    quantite = consommable_data.get('quantite_necessaire', 1)
-                else:
-                    # Format ancien (simple ID)
-                    consommable_id = consommable_data
-                    quantite = 1
-                
-                if consommable_id:
-                    PlanMaintenanceConsommable.objects.create(
-                        plan_maintenance=plan,
-                        consommable_id=consommable_id,
-                        quantite_necessaire=quantite
-                    )
-
-            # Documents du plan (upload via FormData)
-            documents_data = pm_data.get("documents", []) or []
-            for doc_index, doc_data in enumerate(documents_data):
-                file_key = f"pm_{pm_index}_document_{doc_index}"
-                uploaded_file = request.FILES.get(file_key)
-                if not uploaded_file:
-                    return Response(
-                        {"error": f"Fichier manquant pour le document #{doc_index + 1} (clé attendue: {file_key})"},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-
-                doc_data = doc_data or {}
-
-                nom_document = doc_data.get("titre")
-                if not nom_document:
-                    # fallback minimal : nom réel du fichier uploadé
-                    nom_document = uploaded_file.name
-
-                type_document_id = doc_data.get("type")
-                try:
-                    type_document_id = int(type_document_id)
-                except (TypeError, ValueError):
-                    return Response(
-                        {"error": f"Type de document invalide pour le document '{nom_document}'"},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-
-                document = Document.objects.create(
-                    nomDocument=nom_document,
-                    typeDocument_id=type_document_id,
-                    cheminAcces=uploaded_file
-                )
-
-                PlanMaintenanceDocument.objects.create(
-                    plan_maintenance=plan,
-                    document=document
-                )
-
-        return Response(
-            EquipementSerializer(equipement).data,
-            status=status.HTTP_201_CREATED
-        )
-
-
-    def getFormattedCounterValue(self, counter):
-        if counter["type"] == "Calendaire":
-            return self.formatFromDateToDays(counter["valeurCourante"])
-        else:
-            try:
-                return float(counter["valeurCourante"])
-            except ValueError:
-                return 0
-
-    
-    def create_declencher(self, compteur, plan, seuil_data):
-
-        est_glissant = seuil_data.get("estGlissant", False)
-
-        ecart = float(seuil_data.get("ecartInterventions", 0))
-        if compteur.type == 'Calendaire':
-            print("Création d'un seuil calendaire")
-            # Dates en jours
-            derniere = self.formatFromDateToDays(
-                seuil_data.get("derniereIntervention")
-            )
-
-            prochaine = self.formatFromDateToDays(
-                seuil_data.get("prochaineMaintenance")
-            )
-
-
-        else:
-            derniere = float(seuil_data.get("derniereIntervention", 0))
-            prochaine = derniere + ecart
-
-        Declencher.objects.create(
-            compteur=compteur,
-            planMaintenance=plan,
-            derniereIntervention=derniere,
-            prochaineMaintenance=prochaine,
-            ecartInterventions=ecart,
-            estGlissant=est_glissant
-        )
-
-
-    def formatFromDateToDays(self, date_str):
         try:
-            date_value = datetime.datetime.strptime(date_str, '%Y-%m-%d')
-            base_date = datetime.datetime(1, 1, 1)  # Date de référence
-            delta = date_value - base_date
-            print(f"Conversion de la date {date_str} en jours: {delta.days}")
-            return delta.days
-        except Exception:
-            print(f"Erreur de conversion de la date {date_str}, retour 0")
-            return 0
-    
+            equipement = services.create_equipement(
+                data, request.FILES, getattr(request, "user", None)
+            )
+        except services.UtilisateurCreateurIntrouvable as exc:
+            return Response({"error": exc.message}, status=status.HTTP_401_UNAUTHORIZED)
+        except services.DocumentRequisManquant as exc:
+            return Response({"error": exc.message}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(EquipementSerializer(equipement).data, status=status.HTTP_201_CREATED)
+
     @transaction.atomic
     def update(self, request, *args, **kwargs):
-        """
-        Mise à jour d'un équipement - seulement les changements sont envoyés
-        """
+        """Met à jour un équipement à partir d'un diff de changements (``changes`` en FormData)."""
         equipement = self.get_object()
-        
-        # -------------------------
-        # Récupération des données
-        # -------------------------
+
         data = dict(request.data)
-        
-        # Extraire les valeurs uniques des listes
-        for key, value in data.items():
+        for key, value in list(data.items()):
             if isinstance(value, list) and len(value) == 1:
                 data[key] = value[0]
 
-        # Récupérer les changements
         changes_data = data.get("changes")
         if not changes_data:
             return Response(
                 {"error": "Aucune donnée de changement fournie"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
@@ -514,385 +225,100 @@ class EquipementViewSet(ArchivableViewSetMixin, GimaoModelViewSet):
         except json.JSONDecodeError:
             return Response(
                 {"error": "Format JSON invalide pour les changements"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        print('Données de la requête:')
-        print(f"  Changements: {changes}")
-        print(f"  Fichiers: {list(request.FILES.keys())}")
+        equipement = services.update_equipement(equipement, changes, request.FILES)
 
-        # -------------------------
-        # Traitement des modifications
-        # -------------------------
+        return Response(EquipementSerializer(equipement).data, status=status.HTTP_200_OK)
 
-        # 1. Mise à jour des champs simples de l'équipement
-        simple_fields = ['numSerie', 'reference', 'designation', 'dateMiseEnService',
-                        'prixAchat', 'modeleEquipement', 'fournisseur', 'fabricant',
-                        'famille', 'lieu', 'statut', 'type']
-        
-        has_updates = False
 
-        for field in simple_fields:
-            if field in changes:
-                modification = changes[field]
-                nouveau = modification.get('nouvelle')
-                
-                if field == 'lieu' and isinstance(nouveau, dict):
-                    nouveau = nouveau.get('id')
-                
-                # Appliquer la modification
-                if field == 'lieu' and nouveau:
-                    try:
-                        equipement.lieu = Lieu.objects.get(id=nouveau)
-                        has_updates = True
-                    except Lieu.DoesNotExist:
-                        pass
-                
-                elif field == 'statut' and nouveau:
-                    dernier_statut = equipement.statuts.order_by('-dateChangement').first()
-                    ancien_statut = dernier_statut.statut if dernier_statut else None
-                    
-                    if ancien_statut != nouveau:
-                        StatutEquipement.objects.create(
-                            equipement=equipement,
-                            statut=nouveau,
-                            dateChangement=timezone.now()
-                        )
-                
-                elif field == 'modeleEquipement' and nouveau:
-                    try:
-                        equipement.modele = ModeleEquipement.objects.get(id=nouveau)
-                        has_updates = True
-                    except ModeleEquipement.DoesNotExist:
-                        pass
-                
-                elif field == 'fabricant' and nouveau:
-                    try:
-                        equipement.fabricant = Fabricant.objects.get(id=nouveau)
-                        has_updates = True
-                    except Fabricant.DoesNotExist:
-                        pass
-                
-                elif field == 'fournisseur' and nouveau:
-                    try:
-                        equipement.fournisseur = Fournisseur.objects.get(id=nouveau)
-                        has_updates = True
-                    except Fournisseur.DoesNotExist:
-                        pass
-                
-                elif field == 'famille' and nouveau:
-                    try:
-                        equipement.famille = FamilleEquipement.objects.get(id=nouveau)
-                        has_updates = True
-                    except FamilleEquipement.DoesNotExist:
-                        pass
-                
-                elif field in ['numSerie', 'reference', 'designation', 'dateMiseEnService', 'prixAchat', 'type']:
-                    ancien_val = getattr(equipement, field, None)
-                    if str(ancien_val) != str(nouveau):
-                        setattr(equipement, field, nouveau)
-                        has_updates = True
+class VehiculeViewSet(ArchivableViewSetMixin, GimaoModelViewSet):
+    """
+    CRUD sur les véhicules (``Equipement`` de type ``VEHICULE`` + son ``VehiculeProfile``).
 
-        # 2. Consommables
-        if 'consommables' in changes:
-            modification = changes['consommables']
-            
-            # Détecter les ajouts et suppressions
-            ajoutes = modification.get('ajoutes', [])
-            retires = modification.get('retires', [])
-            
-            if ajoutes or retires:
-                if retires:
-                    equipement.constituer_set.filter(consommable_id__in=retires).delete()
-                
-                for consommable_id in ajoutes:
-                    Constituer.objects.create(
-                        equipement=equipement,
-                        consommable_id=consommable_id
-                    )
+    La création et la mise à jour délèguent respectivement à
+    ``equipement.services.create_vehicule`` et ``update_vehicule``, qui
+    créent/modifient l'``Equipement`` et son ``VehiculeProfile`` dans une
+    seule transaction atomique (cf. ADR-001, TUS-005).
+    """
 
-        # 3. Image
-        if 'lienImageEquipement' in request.FILES:
-            uploaded_file = request.FILES['lienImageEquipement']
-            if equipement.lienImage:
-                try:
-                    equipement.lienImage.delete(save=False)
-                except:
-                    pass
-            equipement.lienImage = uploaded_file
-            has_updates = True
+    queryset = Equipement.objects.filter(type="VEHICULE").select_related(
+        "lieu", "modele", "vehicule_profile"
+    )
+    serializer_class = VehiculeSerializer
 
-        if has_updates:
-            equipement.save()
+    def get_serializer_class(self):
+        if self.action == "create":
+            return VehiculeCreateSerializer
+        return VehiculeSerializer
 
-        return Response(
-            EquipementSerializer(equipement).data,
-            status=status.HTTP_200_OK
-        )
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        """Crée un véhicule (Equipement + VehiculeProfile) en une seule requête."""
+        data = EquipementViewSet._normalize_create_payload(request.data)
 
-    def _update_compteur_from_changes(self, compteur, modifications, request):
-        """Met à jour un compteur existant"""
-        print(f"Mise à jour du compteur {compteur.id} avec modifications: {modifications}")
-        
-        # Mapping des champs du frontend vers le modèle Compteur
-        field_mapping = {
-            'nom': 'nomCompteur',
-            'valeurCourante': 'valeurCourante',
-            'unite': 'unite',
-            'estPrincipal': 'estPrincipal',
-            'type': 'type'
-        }
-        
-        # Mise à jour des champs simples du compteur
-        for field, model_field in field_mapping.items():
-            if field in modifications:
-                field_data = modifications[field]
-                nouvelle_valeur = field_data.get('nouvelle')
-                if nouvelle_valeur is not None:
-                    old_value = getattr(compteur, model_field)
-                    if str(old_value) != str(nouvelle_valeur):
-                        setattr(compteur, model_field, nouvelle_valeur)
-                        print(f"  {field}: {old_value} -> {nouvelle_valeur}")
-        
-        compteur.save()
-        
-        # Gérer les modifications du seuil (Declencher)
-        seuil_fields = ['derniereIntervention', 'intervalle', 'estGlissant']
-        if any(f in modifications for f in seuil_fields):
-            print(f"  Modification du seuil détectée")
-            self._update_declencher_from_changes(compteur, modifications, request)
-        
-        # Gérer le plan de maintenance si présent dans les modifications
-        plan_keys = [k for k in modifications.keys() if k.startswith('planMaintenance') or k in ['habElec', 'permisFeu', 'description']]
-        if plan_keys:
-            print(f"  Modification du plan de maintenance: {plan_keys}")
-            self._update_plan_maintenance_from_changes(compteur, modifications, request)
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
 
-    def _update_declencher_from_changes(self, compteur, modifications, request):
-        """Met à jour le seuil Declencher d'un compteur"""
-        print(f"Mise à jour du seuil pour le compteur {compteur.id}")
-
-        def to_float(value, default=0.0):
-            try:
-                return float(value)
-            except (TypeError, ValueError):
-                return default
-
-        def to_int(value, default=0):
-            try:
-                return int(float(value))
-            except (TypeError, ValueError):
-                return default
-        
-        # Récupérer le premier Declencher (normalement il n'y en a qu'un par compteur)
-        declencher = compteur.declenchements.first()
-        
-        if not declencher:
-            print("  Aucun seuil trouvé, création d'un nouveau")
-            # Si pas de Declencher, en créer un
-            declencher = Declencher.objects.create(
-                compteur=compteur,
-                derniereIntervention=0,
-                ecartInterventions=0,
-                prochaineMaintenance=0,
-                estGlissant=False
+        try:
+            equipement = services.create_vehicule(
+                data, request.FILES, getattr(request, "user", None)
             )
-        
-        # Mise à jour des champs du Declencher
-        if 'derniereIntervention' in modifications:
-            nouvelle_valeur = modifications['derniereIntervention'].get('nouvelle')
-            if nouvelle_valeur is not None:
-                declencher.derniereIntervention = to_int(nouvelle_valeur)
-                print(f"  derniereIntervention: -> {nouvelle_valeur}")
-        
-        ecart_key = 'intervalle' if 'intervalle' in modifications else 'ecartInterventions' if 'ecartInterventions' in modifications else None
-        if ecart_key:
-            nouvelle_valeur = modifications[ecart_key].get('nouvelle')
-            if nouvelle_valeur is not None:
-                declencher.ecartInterventions = to_float(nouvelle_valeur)
-                print(f"  ecartInterventions: -> {nouvelle_valeur}")
-        
-        if 'estGlissant' in modifications:
-            nouvelle_valeur = modifications['estGlissant'].get('nouvelle')
-            if nouvelle_valeur is not None:
-                declencher.estGlissant = bool(nouvelle_valeur)
-                print(f"  estGlissant: -> {nouvelle_valeur}")
-        
-        # Recalculer la prochaine maintenance
-        declencher.prochaineMaintenance = to_float(declencher.derniereIntervention) + to_float(declencher.ecartInterventions)
-        print(f"  prochaineMaintenance calculée: {declencher.prochaineMaintenance}")
-        
-        declencher.save()
+        except services.UtilisateurCreateurIntrouvable as exc:
+            return Response({"error": exc.message}, status=status.HTTP_401_UNAUTHORIZED)
+        except services.DocumentRequisManquant as exc:
+            return Response({"error": exc.message}, status=status.HTTP_400_BAD_REQUEST)
 
-    def _update_plan_maintenance_from_changes(self, compteur, modifications, request):
-        """Met à jour le plan de maintenance d'un compteur"""
-        print(f"Traitement du plan de maintenance pour compteur {compteur.id}")
-        
-        # Récupérer le Declencher pour trouver le PlanMaintenance associé
-        declencher = compteur.declenchements.first()
-        
-        if not declencher or not declencher.planMaintenance:
-            print("  Aucun plan de maintenance trouvé, création d'un nouveau")
-            # Créer un nouveau plan de maintenance
-            plan = PlanMaintenance.objects.create(
-                equipement=compteur.equipement,
-                nom="Nouveau plan",
-                type_plan_maintenance_id=1  # Type par défaut, à ajuster selon vos besoins
+        return Response(VehiculeSerializer(equipement).data, status=status.HTTP_201_CREATED)
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        """Met à jour un véhicule à partir d'un diff de changements (``changes`` en FormData)."""
+        equipement = self.get_object()
+
+        data = dict(request.data)
+        for key, value in list(data.items()):
+            if isinstance(value, list) and len(value) == 1:
+                data[key] = value[0]
+
+        changes_data = data.get("changes")
+        if not changes_data:
+            return Response(
+                {"error": "Aucune donnée de changement fournie"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-            
-            # Créer ou mettre à jour le Declencher pour lier le compteur au plan
-            if not declencher:
-                Declencher.objects.create(
-                    compteur=compteur,
-                    planMaintenance=plan,
-                    derniereIntervention=0,
-                    ecartInterventions=0,
-                    prochaineMaintenance=0,
-                    estGlissant=False
-                )
-            else:
-                declencher.planMaintenance = plan
-                declencher.save()
-        else:
-            plan = declencher.planMaintenance
-        
-        # Mise à jour du nom
-        if 'planMaintenance.nom' in modifications:
-            new_name = modifications['planMaintenance.nom'].get('nouvelle')
-            if new_name and plan.nom != new_name:
-                print(f"  Nom du plan: {plan.nom} -> {new_name}")
-                plan.nom = new_name
-        
-        # Mise à jour du type
-        if 'planMaintenance.type' in modifications:
-            new_type = modifications['planMaintenance.type'].get('nouvelle')
-            if new_type and plan.type_plan_maintenance_id != new_type:
-                print(f"  Type du plan: {plan.type_plan_maintenance_id} -> {new_type}")
-                plan.type_plan_maintenance_id = new_type
-        
-        # Mise à jour du commentaire (description)
-        if 'description' in modifications:
-            new_desc = modifications['description'].get('nouvelle')
-            if new_desc is not None:
-                print(f"  Commentaire: {plan.commentaire} -> {new_desc}")
-                plan.commentaire = new_desc
-        
-        # Mise à jour de l'habilitation électrique
-        if 'habElec' in modifications:
-            new_val = modifications['habElec'].get('nouvelle')
-            if new_val is not None:
-                print(f"  Habilitation électrique: {plan.necessiteHabilitationElectrique} -> {new_val}")
-                plan.necessiteHabilitationElectrique = bool(new_val)
-        
-        # Mise à jour du permis feu
-        if 'permisFeu' in modifications:
-            new_val = modifications['permisFeu'].get('nouvelle')
-            if new_val is not None:
-                print(f"  Permis feu: {plan.necessitePermisFeu} -> {new_val}")
-                plan.necessitePermisFeu = bool(new_val)
-        
-        # Mise à jour des consommables
-        if 'planMaintenance.consommables' in modifications:
-            consommables_data = modifications['planMaintenance.consommables']
-            nouveaux_consommables = consommables_data.get('nouvelle', [])
-            ajoutes = consommables_data.get('ajoutes', [])
-            retires = consommables_data.get('retires', [])
-            
-            print(f"  Consommables: {len(nouveaux_consommables)} total, {len(ajoutes)} ajoutés, {len(retires)} retirés")
-            
-            # Supprimer les consommables retirés
-            if retires:
-                plan.planmaintenanceconsommable_set.filter(consommable_id__in=retires).delete()
-            
-            # Ajouter les nouveaux consommables
-            for consommable_id in ajoutes:
-                # Chercher la quantité dans les données complètes
-                quantite = 1  # Valeur par défaut
-                for conso in nouveaux_consommables:
-                    # Support pour nouveau format {consommable_id, quantite_necessaire}
-                    if isinstance(conso, dict):
-                        conso_id = conso.get('consommable_id') or conso.get('consommable')
-                        if conso_id == consommable_id:
-                            quantite = conso.get('quantite_necessaire') or conso.get('quantite', 1)
-                            break
-                
-                PlanMaintenanceConsommable.objects.create(
-                    plan_maintenance=plan,
-                    consommable_id=consommable_id,
-                    quantite_necessaire=quantite
-                )
-        
-        # Mise à jour des documents
-        if 'planMaintenance.documents' in modifications:
-            documents_data = modifications['planMaintenance.documents']
-            nouveaux_documents = documents_data.get('nouvelle', [])
-            anciens_documents = documents_data.get('ancienne', [])
-            
-            print(f"  Documents: {len(nouveaux_documents)} nouveau(x), {len(anciens_documents)} ancien(s)")
-            
-            # Créer un mapping pour trouver les fichiers
-            file_mapping = {}
-            for key, file in request.FILES.items():
-                if key.startswith('document_'):
-                    # Extraire les métadonnées
-                    meta_key = f"{key}_meta"
-                    if meta_key in request.data:
-                        try:
-                            meta = json.loads(request.data[meta_key])
-                            compteur_id = meta.get('compteurId')
-                            doc_index = meta.get('documentIndex')
-                            
-                            if compteur_id == compteur.id:
-                                file_mapping[doc_index] = file
-                        except json.JSONDecodeError:
-                            continue
-            
-            # Pour chaque nouveau document
-            for i, doc_data in enumerate(nouveaux_documents):
-                if not isinstance(doc_data, dict):
-                    continue
-                
-                # Vérifier si c'est un document existant qui a un fichier à mettre à jour
-                file_to_use = file_mapping.get(i)
-                
-                if file_to_use:
-                    # Créer un nouveau document avec le fichier
-                    document = Document.objects.create(
-                        nomDocument=doc_data.get('titre', file_to_use.name),
-                        cheminAcces=file_to_use,
-                        typeDocument_id=doc_data.get('type', 1)
-                    )
-                    
-                    # Lier au plan de maintenance
-                    PlanMaintenanceDocument.objects.create(
-                        plan_maintenance=plan,
-                        document=document
-                    )
-                    print(f"  Document ajouté: {document.nomDocument}")
-                
-                elif 'titre' in doc_data and 'type' in doc_data:
-                    # Document sans fichier (métadonnées seulement)
-                    # C'est peut-être un document qui existait déjà
-                    print(f"Document métadonnées seulement: {doc_data.get('titre')}")
-        
-        plan.save()
 
+        try:
+            changes = json.loads(changes_data)
+        except json.JSONDecodeError:
+            return Response(
+                {"error": "Format JSON invalide pour les changements"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        equipement = services.update_vehicule(equipement, changes, request.FILES)
+
+        return Response(VehiculeSerializer(equipement).data, status=status.HTTP_200_OK)
 
 
 class StatutEquipementViewSet(GimaoModelViewSet):
     """Enregistrement des changements de statut d'un équipement. Utilisé en lecture pour construire la timeline."""
+
     queryset = StatutEquipement.objects.all()
     serializer_class = StatutEquipementSerializer
 
 
 class ConstituerViewSet(GimaoModelViewSet):
     """Liaison équipement–consommable : déclare qu'un consommable est utilisé par un équipement."""
+
     queryset = Constituer.objects.all()
     serializer_class = ConstituerSerializer
 
 
 class ModeleEquipementViewSet(GimaoModelViewSet):
     """CRUD sur les modèles d'équipements. La création gère l'association avec le fabricant."""
+
     queryset = ModeleEquipement.objects.all()
     serializer_class = ModeleEquipementSerializer
 
@@ -901,42 +327,31 @@ class ModeleEquipementViewSet(GimaoModelViewSet):
         """Création d'un nouveau modèle d'équipement"""
         data = request.data
         print(f"Data reçue pour création modèle : {data}")
-        
+
         # Extraire le nom et le fabricant_id
-        nom = data.get('nom')
-        fabricant_id = data.get('fabricant')
-        
+        nom = data.get("nom")
+        fabricant_id = data.get("fabricant")
+
         if not nom:
             return Response(
-                {"error": "Le nom du modèle est requis"}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Le nom du modèle est requis"}, status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         if not fabricant_id:
             return Response(
-                {"error": "Le fabricant est requis"}, 
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Le fabricant est requis"}, status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         # Créer le modèle
         try:
-            modele = ModeleEquipement.objects.create(
-                nom=nom,
-                fabricant_id=fabricant_id
-            )
-            
+            modele = ModeleEquipement.objects.create(nom=nom, fabricant_id=fabricant_id)
+
             # Retourner le modèle créé avec le serializer
             serializer = self.get_serializer(modele)
-            return Response(
-                serializer.data,
-                status=status.HTTP_201_CREATED
-            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
             print(f"Erreur lors de la création du modèle : {str(e)}")
-            return Response(
-                {"error": str(e)}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @transaction.atomic
     def update(self, request, *args, **kwargs):
@@ -944,45 +359,40 @@ class ModeleEquipementViewSet(GimaoModelViewSet):
         modele = self.get_object()
         data = request.data
         print(f"Data reçue : {data}")
-        
+
         changes = data
         print(f"Changes : {changes}")
-        
-        
+
         # Mise à jour des champs du modèle
-        if 'nom' in changes:
-            field_data = changes['nom']
-            nouvelle_valeur = field_data.get('nouvelle')
-            ancienne_valeur = field_data.get('ancienne')
-                        
+        if "nom" in changes:
+            field_data = changes["nom"]
+            nouvelle_valeur = field_data.get("nouvelle")
+            field_data.get("ancienne")
+
             if nouvelle_valeur is not None:
                 old_value = modele.nom
-                
+
                 if str(old_value) != str(nouvelle_valeur):
                     modele.nom = nouvelle_valeur
 
-        
-        if 'fabricant' in changes:
-            field_data = changes['fabricant']
-            nouvelle_valeur = field_data.get('nouvelle')
-            ancienne_valeur = field_data.get('ancienne')
-                        
+        if "fabricant" in changes:
+            field_data = changes["fabricant"]
+            nouvelle_valeur = field_data.get("nouvelle")
+            field_data.get("ancienne")
+
             if nouvelle_valeur is not None:
                 old_value = modele.fabricant_id
-                
+
                 if old_value != nouvelle_valeur:
                     modele.fabricant_id = nouvelle_valeur
-        
+
         # Vérifier s'il y a eu des changements (excluant 'user')
-        has_changes = any(key in changes for key in ['nom', 'fabricant'])
-        
+        has_changes = any(key in changes for key in ["nom", "fabricant"])
+
         if has_changes:
             modele.save()
 
-        return Response(
-            ModeleEquipementSerializer(modele).data,
-            status=status.HTTP_200_OK
-        )
+        return Response(ModeleEquipementSerializer(modele).data, status=status.HTTP_200_OK)
 
 
 class CompteurViewSet(GimaoModelViewSet):
@@ -994,6 +404,7 @@ class CompteurViewSet(GimaoModelViewSet):
     de déclenchement. Les compteurs de type ``Calendaire`` stockent leurs valeurs comme numéros
     de jour ordinaux Python (``date.toordinal()``).
     """
+
     queryset = Compteur.objects.all()
     serializer_class = CompteurSerializer
 
@@ -1002,68 +413,57 @@ class CompteurViewSet(GimaoModelViewSet):
         """Création d'un nouveau compteur avec plan de maintenance optionnel"""
         try:
             # Parser les données JSON du compteur
-            compteur_data = json.loads(request.data.get('compteur', '{}'))
+            compteur_data = json.loads(request.data.get("compteur", "{}"))
 
             print(f"Données reçues pour création compteur : {compteur_data}")
-            
+
             # Vérifier que l'équipement est fourni
-            equipement_id = compteur_data.get('equipement')
+            equipement_id = compteur_data.get("equipement")
             if not equipement_id:
                 return Response(
-                    {"error": "L'ID de l'équipement est requis"},
-                    status=status.HTTP_400_BAD_REQUEST
+                    {"error": "L'ID de l'équipement est requis"}, status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             # Récupérer l'équipement
             try:
                 equipement = Equipement.objects.get(id=equipement_id)
             except Equipement.DoesNotExist:
                 return Response(
-                    {"error": "Équipement introuvable"},
-                    status=status.HTTP_404_NOT_FOUND
+                    {"error": "Équipement introuvable"}, status=status.HTTP_404_NOT_FOUND
                 )
-            
+
             # Traiter le cas ou on a une date
-            if compteur_data.get('type') == 'Calendaire' and 'valeurCourante' in compteur_data:
-                valeurCourante = self.formatFromDateToDays(compteur_data.get('valeurCourante'))
+            if compteur_data.get("type") == "Calendaire" and "valeurCourante" in compteur_data:
+                valeurCourante = self.formatFromDateToDays(compteur_data.get("valeurCourante"))
             else:
                 # sinon convertir en nombre
                 try:
-                    valeurCourante = float(compteur_data.get('valeurCourante', 0))
+                    valeurCourante = float(compteur_data.get("valeurCourante", 0))
                 except (ValueError, TypeError):
                     valeurCourante = 0
 
-
-            
             # Créer le compteur
             compteur = Compteur.objects.create(
                 equipement=equipement,
-                nomCompteur=compteur_data.get('nom', ''),
+                nomCompteur=compteur_data.get("nom", ""),
                 valeurCourante=valeurCourante,
-                unite=compteur_data.get('unite', 'heures'),
-                estPrincipal=compteur_data.get('estPrincipal', False),
-                type=compteur_data.get('type', 'Numérique')
+                unite=compteur_data.get("unite", "heures"),
+                estPrincipal=compteur_data.get("estPrincipal", False),
+                type=compteur_data.get("type", "Numérique"),
             )
 
-            
             # Retourner le compteur créé
             serializer = CompteurSerializer(compteur)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-            
+
         except json.JSONDecodeError:
-            return Response(
-                {"error": "Format JSON invalide"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Format JSON invalide"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def formatFromDateToDays(self, date_str):
         try:
-            date_value = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+            date_value = datetime.datetime.strptime(date_str, "%Y-%m-%d")
             base_date = datetime.datetime(1, 1, 1)  # Date de référence
             delta = date_value - base_date
             print(f"Conversion de la date {date_str} en jours: {delta.days}")
@@ -1074,84 +474,70 @@ class CompteurViewSet(GimaoModelViewSet):
 
     @transaction.atomic
     def update(self, request, *args, **kwargs):
-        """ Mise à jour d'un compteur """      
+        """Mise à jour d'un compteur"""
         changes = request.data
         compteur = self.get_object()
-        print(f"Data reçue pour mise à jour du compteur {compteur.id} : {changes}")    
+        print(f"Data reçue pour mise à jour du compteur {compteur.id} : {changes}")
 
         if len(changes.keys()) == 0:
-            return Response(
-                {"message": "Aucune modification détectée."},
-                status=status.HTTP_200_OK
-            )
+            return Response({"message": "Aucune modification détectée."}, status=status.HTTP_200_OK)
 
         # Mettre à jour les champs du compteur
         field_mapping = {
-            'nomCompteur': 'nomCompteur',
-            'valeurCourante': 'valeurCourante',
-            'unite': 'unite',
-            'estPrincipal': 'estPrincipal',
-            'type': 'type'
+            "nomCompteur": "nomCompteur",
+            "valeurCourante": "valeurCourante",
+            "unite": "unite",
+            "estPrincipal": "estPrincipal",
+            "type": "type",
         }
 
         for field, model_field in field_mapping.items():
             if field in changes:
                 field_data = changes[field]
-                nouvelle_valeur = field_data.get('nouveau')
-                ancienne_valeur = field_data.get('ancien')
-                
+                nouvelle_valeur = field_data.get("nouveau")
+                field_data.get("ancien")
+
                 if nouvelle_valeur is not None:
                     old_value = getattr(compteur, model_field)
-                    if field == 'valeurCourante' and compteur.type == 'Calendaire':
-                            # Convertir la date en jours
-                            nouvelle_valeur = self.formatFromDateToDays(nouvelle_valeur)
-                    
-                    if str(old_value) != str(nouvelle_valeur):                       
+                    if field == "valeurCourante" and compteur.type == "Calendaire":
+                        # Convertir la date en jours
+                        nouvelle_valeur = self.formatFromDateToDays(nouvelle_valeur)
 
+                    if str(old_value) != str(nouvelle_valeur):
                         setattr(compteur, model_field, nouvelle_valeur)
-                        
 
         compteur.save()
-        return Response(
-            CompteurSerializer(compteur).data,
-            status=status.HTTP_200_OK
-        )
-    
+        return Response(CompteurSerializer(compteur).data, status=status.HTTP_200_OK)
 
 
 class FamilleEquipementViewSet(GimaoModelViewSet):
     """CRUD sur les familles d'équipements. Supporte une hiérarchie parent–enfant via ``familleParente``."""
+
     queryset = FamilleEquipement.objects.all()
     serializer_class = FamilleEquipementSerializer
 
 
 class EquipementAffichageViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet pour l'affichage détaillé des équipements"""
+
     serializer_class = EquipementAffichageSerializer
-    lookup_field = 'id'
+    lookup_field = "id"
 
     def get_queryset(self):
         return Equipement.objects.select_related(
-            'lieu', 'modele__fabricant', 'famille'
-        ).prefetch_related(
-            'statuts',
-            'compteurs',
-            'documents'
-        )
-
-
+            "lieu", "modele__fabricant", "famille"
+        ).prefetch_related("statuts", "compteurs", "documents")
 
 
 class DeclenchementViewSet(GimaoModelViewSet):
-    """ ViewSet pour les seuils (declenchement): création/modification """
+    """ViewSet pour les seuils (declenchement): création/modification"""
 
     queryset = Declencher.objects.all()
     serializer_class = DeclenchementSerializer
 
-
     @transaction.atomic
     def create(self, request, *args, **kwargs):
-        """ Creation d'un Seuil avec PM & compteur """
+        """Creation d'un Seuil avec PM & compteur"""
         # Récupération et normalisation des données
         data = dict(request.data)
 
@@ -1163,14 +549,14 @@ class DeclenchementViewSet(GimaoModelViewSet):
                 data[key] = value[0]
 
         # Parser les objets JSON s'ils sont envoyés en tant que chaînes
-        plan_data = data.get('planMaintenance') or {}
+        plan_data = data.get("planMaintenance") or {}
         if isinstance(plan_data, str):
             try:
                 plan_data = json.loads(plan_data)
             except json.JSONDecodeError:
                 plan_data = {}
 
-        seuil = data.get('seuil') or {}
+        seuil = data.get("seuil") or {}
         if isinstance(seuil, str):
             try:
                 seuil = json.loads(seuil)
@@ -1178,69 +564,83 @@ class DeclenchementViewSet(GimaoModelViewSet):
                 seuil = {}
 
         # Récupérer le compteur existant ou créer un compteur minimal si on fournit un equipmentId
-        compteur_id = data.get('compteur') or data.get('compteurId')
-        equipment_id = data.get('equipmentId') or data.get('equipement') or data.get('equipmentId')
+        compteur_id = data.get("compteur") or data.get("compteurId")
+        equipment_id = data.get("equipmentId") or data.get("equipement") or data.get("equipmentId")
 
         compteur = None
         if compteur_id:
             try:
                 compteur = Compteur.objects.get(id=compteur_id)
             except Compteur.DoesNotExist:
-                return Response({'error': 'Compteur introuvable'}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": "Compteur introuvable"}, status=status.HTTP_404_NOT_FOUND)
         else:
             if not equipment_id:
-                return Response({'error': 'Il faut fournir "compteur" ou "equipmentId"'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": 'Il faut fournir "compteur" ou "equipmentId"'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             try:
                 equipment = Equipement.objects.get(id=equipment_id)
             except Equipement.DoesNotExist:
-                return Response({'error': 'Équipement introuvable'}, status=status.HTTP_404_NOT_FOUND)
+                return Response(
+                    {"error": "Équipement introuvable"}, status=status.HTTP_404_NOT_FOUND
+                )
 
             # Créer un compteur par défaut lié à l'équipement
             compteur = Compteur.objects.create(
                 equipement=equipment,
-                nomCompteur=plan_data.get('nom', f"Compteur pour {equipment.id}"),
+                nomCompteur=plan_data.get("nom", f"Compteur pour {equipment.id}"),
                 valeurCourante=0,
-                unite=plan_data.get('unite', 'heures'),
+                unite=plan_data.get("unite", "heures"),
                 estPrincipal=False,
-                type=plan_data.get('type', 'Général')
+                type=plan_data.get("type", "Général"),
             )
 
-        pm_id = plan_data.get('id') or plan_data.get('planMaintenanceId')
+        pm_id = plan_data.get("id") or plan_data.get("planMaintenanceId")
         plan = None
         if pm_id:
             try:
                 plan = PlanMaintenance.objects.get(id=pm_id)
             except PlanMaintenance.DoesNotExist:
-                return Response({'error': 'Plan de maintenance introuvable'}, status=status.HTTP_404_NOT_FOUND)
-        
-        else :
+                return Response(
+                    {"error": "Plan de maintenance introuvable"}, status=status.HTTP_404_NOT_FOUND
+                )
+
+        else:
             # Créer le plan de maintenance
             plan = PlanMaintenance.objects.create(
                 equipement=compteur.equipement,
-                nom=plan_data.get('nom') or f"Plan {compteur.nomCompteur}",
-                type_plan_maintenance_id=plan_data.get('type_id') or plan_data.get('type'),
-                commentaire=plan_data.get('description') or plan_data.get('commentaire', ''),
-                necessiteHabilitationElectrique=bool(plan_data.get('necessiteHabilitationElectrique', False)),
-                necessitePermisFeu=bool(plan_data.get('necessitePermisFeu', False))
+                nom=plan_data.get("nom") or f"Plan {compteur.nomCompteur}",
+                type_plan_maintenance_id=plan_data.get("type_id") or plan_data.get("type"),
+                commentaire=plan_data.get("description") or plan_data.get("commentaire", ""),
+                necessiteHabilitationElectrique=bool(
+                    plan_data.get("necessiteHabilitationElectrique", False)
+                ),
+                necessitePermisFeu=bool(plan_data.get("necessitePermisFeu", False)),
             )
 
         # Créer le déclencheur (seuil)
-        derniere = seuil.get('derniereIntervention') or seuil.get('derniereintervention') or 0
-        prochaine = seuil.get('prochaineMaintenance') or seuil.get('prochainemaintenance') or 0
-        ecart = seuil.get('ecartInterventions') or seuil.get('intervalle') or 0
-        est_glissant = seuil.get('estGlissant', False)
+        derniere = seuil.get("derniereIntervention") or seuil.get("derniereintervention") or 0
+        prochaine = seuil.get("prochaineMaintenance") or seuil.get("prochainemaintenance") or 0
+        ecart = seuil.get("ecartInterventions") or seuil.get("intervalle") or 0
+        est_glissant = seuil.get("estGlissant", False)
 
         # Détection calendaire : par type OU par nature des données (ISO string)
         is_calendaire = (
-            compteur.type == 'Calendaire' or
-            compteur.unite == 'date' or
-            isinstance(derniere, str) and '-' in str(derniere)
+            compteur.type == "Calendaire"
+            or compteur.unite == "date"
+            or isinstance(derniere, str)
+            and "-" in str(derniere)
         )
 
         if is_calendaire:
             # Convertir en ordinal
-            derniere = self.date_to_days(derniere) if isinstance(derniere, str) else int(derniere or 0)
-            prochaine = self.date_to_days(prochaine) if isinstance(prochaine, str) else int(prochaine or 0)
+            derniere = (
+                self.date_to_days(derniere) if isinstance(derniere, str) else int(derniere or 0)
+            )
+            prochaine = (
+                self.date_to_days(prochaine) if isinstance(prochaine, str) else int(prochaine or 0)
+            )
             # Garder ecart tel quel (timestamp MS)
             ecart = int(ecart) if isinstance(ecart, str) else int(ecart or 0)
         else:
@@ -1249,7 +649,7 @@ class DeclenchementViewSet(GimaoModelViewSet):
             except (TypeError, ValueError):
                 prochaine = float(ecart or 0)
 
-        anticipation = data.get('anticipationJours')
+        anticipation = data.get("anticipationJours")
         anticipation_val = int(anticipation) if anticipation else None
 
         declencher = Declencher.objects.create(
@@ -1259,14 +659,14 @@ class DeclenchementViewSet(GimaoModelViewSet):
             ecartInterventions=ecart,
             prochaineMaintenance=prochaine,
             estGlissant=bool(est_glissant),
-            anticipationJours=anticipation_val
+            anticipationJours=anticipation_val,
         )
 
         # Consommables pour le plan
-        for conso in plan_data.get('consommables', []) or []:
+        for conso in plan_data.get("consommables", []) or []:
             if isinstance(conso, dict):
-                consommable_id = conso.get('consommable_id') or conso.get('consommable')
-                quantite = conso.get('quantite_necessaire') or conso.get('quantite') or 1
+                consommable_id = conso.get("consommable_id") or conso.get("consommable")
+                quantite = conso.get("quantite_necessaire") or conso.get("quantite") or 1
             else:
                 consommable_id = conso
                 quantite = 1
@@ -1275,29 +675,26 @@ class DeclenchementViewSet(GimaoModelViewSet):
                 PlanMaintenanceConsommable.objects.create(
                     plan_maintenance=plan,
                     consommable_id=consommable_id,
-                    quantite_necessaire=quantite
+                    quantite_necessaire=quantite,
                 )
 
         # Documents pour le plan
-        documents = plan_data.get('documents', []) or []
+        documents = plan_data.get("documents", []) or []
         for doc_index, doc_data in enumerate(documents):
             # Récupérer le fichier uploadé depuis FormData
-            file_key = f'document_{doc_index}'
+            file_key = f"document_{doc_index}"
             uploaded_file = request.FILES.get(file_key)
 
             if uploaded_file:
                 # Créer le document
                 document = Document.objects.create(
-                    nomDocument=doc_data.get('titre', uploaded_file.name),
+                    nomDocument=doc_data.get("titre", uploaded_file.name),
                     cheminAcces=uploaded_file,
-                    typeDocument_id=doc_data.get('type')
+                    typeDocument_id=doc_data.get("type"),
                 )
 
                 # Lier le document au plan
-                PlanMaintenanceDocument.objects.create(
-                    plan_maintenance=plan,
-                    document=document
-                )
+                PlanMaintenanceDocument.objects.create(plan_maintenance=plan, document=document)
 
         serializer = DeclenchementSerializer(declencher)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -1307,7 +704,7 @@ class DeclenchementViewSet(GimaoModelViewSet):
         Convertit 'YYYY-MM-DD' → nombre de jours depuis 0001-01-01
         """
         try:
-            date_value = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+            date_value = datetime.datetime.strptime(date_str, "%Y-%m-%d")
             base_date = datetime.datetime(1, 1, 1)  # Date de référence
             delta = date_value - base_date
             print(f"Conversion de la date {date_str} en jours: {delta.days}")
@@ -1315,16 +712,14 @@ class DeclenchementViewSet(GimaoModelViewSet):
         except Exception:
             print(f"Erreur de conversion de la date {date_str}, retour 0")
             return 0
-        
-        
 
     @transaction.atomic
     def partial_update(self, request, pk=None):
         declenchement = get_object_or_404(Declencher, pk=pk)
         utilisateur = request.user if request.user.is_authenticated else None
 
-        seuil_diff = json.loads(request.data.get('seuil_diff', '{}'))
-        pm_diff = json.loads(request.data.get('planMaintenance_diff', '{}'))
+        seuil_diff = json.loads(request.data.get("seuil_diff", "{}"))
+        pm_diff = json.loads(request.data.get("planMaintenance_diff", "{}"))
 
         logs = []
 
@@ -1332,6 +727,7 @@ class DeclenchementViewSet(GimaoModelViewSet):
         # 1. MISE À JOUR DU SEUIL
         # ============================
         if seuil_diff:
+
             def to_float(value, default=0.0):
                 try:
                     return float(value)
@@ -1345,30 +741,35 @@ class DeclenchementViewSet(GimaoModelViewSet):
                     return default
 
             for champ, valeurs in seuil_diff.items():
-                if champ in ['derniereIntervention', 'prochaineMaintenance', 'ecartInterventions']:
+                if champ in ["derniereIntervention", "prochaineMaintenance", "ecartInterventions"]:
                     # Si c'est un champ de date, convertir en jours
-                    if champ in ['derniereIntervention', 'prochaineMaintenance'] and declenchement.compteur.type == 'Calendaire':
-                        nouvelle_valeur = self.date_to_days(valeurs.get('nouveau'))
+                    if (
+                        champ in ["derniereIntervention", "prochaineMaintenance"]
+                        and declenchement.compteur.type == "Calendaire"
+                    ):
+                        nouvelle_valeur = self.date_to_days(valeurs.get("nouveau"))
                         setattr(declenchement, champ, nouvelle_valeur)
                     else:
-                        nouvelle_valeur = valeurs.get('nouveau')
-                        if champ == 'derniereIntervention':
+                        nouvelle_valeur = valeurs.get("nouveau")
+                        if champ == "derniereIntervention":
                             setattr(declenchement, champ, to_int(nouvelle_valeur))
                         else:
                             setattr(declenchement, champ, to_float(nouvelle_valeur))
 
                 elif hasattr(declenchement, champ):
-                    setattr(declenchement, champ, valeurs.get('nouveau'))
+                    setattr(declenchement, champ, valeurs.get("nouveau"))
 
             declenchement.save()
 
-            logs.append(Log(
-                type="modification",
-                nomTable="gimao_declencher",
-                idCible={"id": declenchement.id},
-                champsModifies=seuil_diff,
-                utilisateur=utilisateur
-            ))
+            logs.append(
+                Log(
+                    type="modification",
+                    nomTable="gimao_declencher",
+                    idCible={"id": declenchement.id},
+                    champsModifies=seuil_diff,
+                    utilisateur=utilisateur,
+                )
+            )
 
         # ============================
         # 2. MISE À JOUR PLAN MAINTENANCE
@@ -1377,13 +778,12 @@ class DeclenchementViewSet(GimaoModelViewSet):
 
         if plan and pm_diff:
             for champ, valeurs in pm_diff.items():
-
                 # Champs simples
                 if champ in [
                     "nom",
                     "commentaire",
                     "necessiteHabilitationElectrique",
-                    "necessitePermisFeu"
+                    "necessitePermisFeu",
                 ]:
                     setattr(plan, champ, valeurs.get("nouveau"))
 
@@ -1393,23 +793,19 @@ class DeclenchementViewSet(GimaoModelViewSet):
 
                 # Consommables
                 elif champ == "consommables":
-                    PlanMaintenanceConsommable.objects.filter(
-                        plan_maintenance=plan
-                    ).delete()
+                    PlanMaintenanceConsommable.objects.filter(plan_maintenance=plan).delete()
 
                     for c in valeurs.get("nouveau", []):
                         PlanMaintenanceConsommable.objects.create(
                             plan_maintenance=plan,
                             consommable_id=c.get("consommable_id"),
-                            quantite_necessaire=c.get("quantite_necessaire", 1)
+                            quantite_necessaire=c.get("quantite_necessaire", 1),
                         )
 
                 # Documents
                 elif champ == "documents":
                     old_doc_ids = list(
-                        plan.planmaintenancedocument_set.values_list(
-                            "document_id", flat=True
-                        )
+                        plan.planmaintenancedocument_set.values_list("document_id", flat=True)
                     )
 
                     PlanMaintenanceDocument.objects.filter(plan_maintenance=plan).delete()
@@ -1420,9 +816,9 @@ class DeclenchementViewSet(GimaoModelViewSet):
                         uploaded_file = request.FILES.get(file_key)
 
                         # Front attendu: {nom, type_id, document_id}. Fallback minimal: {titre, type} / {id}
-                        titre_value = (doc.get("nom") or doc.get("titre") or "")
-                        type_document_id = (doc.get("type_id") or doc.get("type") or None)
-                        existing_document_id = (doc.get("document_id") or doc.get("id"))
+                        titre_value = doc.get("nom") or doc.get("titre") or ""
+                        type_document_id = doc.get("type_id") or doc.get("type") or None
+                        existing_document_id = doc.get("document_id") or doc.get("id")
 
                         if isinstance(type_document_id, str) and type_document_id.isdigit():
                             type_document_id = int(type_document_id)
@@ -1440,9 +836,7 @@ class DeclenchementViewSet(GimaoModelViewSet):
                             if uploaded_file is not None:
                                 if type_document_id in (None, ""):
                                     return Response(
-                                        {
-                                            "error": f"Type manquant pour le document #{index + 1}"
-                                        },
+                                        {"error": f"Type manquant pour le document #{index + 1}"},
                                         status=status.HTTP_400_BAD_REQUEST,
                                     )
 
@@ -1517,13 +911,15 @@ class DeclenchementViewSet(GimaoModelViewSet):
 
             plan.save()
 
-            logs.append(Log(
-                type="modification",
-                nomTable="gimao_plan_maintenance",
-                idCible={"id": plan.id},
-                champsModifies=pm_diff,
-                utilisateur=utilisateur
-            ))
+            logs.append(
+                Log(
+                    type="modification",
+                    nomTable="gimao_plan_maintenance",
+                    idCible={"id": plan.id},
+                    champsModifies=pm_diff,
+                    utilisateur=utilisateur,
+                )
+            )
 
         # ============================
         # 3. LOGS
@@ -1532,6 +928,5 @@ class DeclenchementViewSet(GimaoModelViewSet):
             Log.objects.bulk_create(logs)
 
         return Response(
-            {"detail": "Modifications appliquées avec succès"},
-            status=status.HTTP_200_OK
+            {"detail": "Modifications appliquées avec succès"}, status=status.HTTP_200_OK
         )

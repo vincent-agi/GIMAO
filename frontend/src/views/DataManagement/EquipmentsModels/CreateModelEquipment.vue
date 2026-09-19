@@ -18,46 +18,46 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import ModeleEquipementForm from '@/components/Forms/ModeleEquipementForm.vue'
-import { useApi } from '@/composables/useApi'
-import { API_BASE_URL } from '@/utils/constants'
+  import { ref, onMounted } from 'vue'
+  import { useRouter } from 'vue-router'
+  import ModeleEquipementForm from '@/components/Forms/ModeleEquipementForm.vue'
+  import { useApi } from '@/composables/useApi'
+  import { API_BASE_URL } from '@/utils/constants'
 
-const router = useRouter()
-const api = useApi(API_BASE_URL)
+  const router = useRouter()
+  const api = useApi(API_BASE_URL)
 
-const fabricants = ref([])
-const loadingData = ref(false)
+  const fabricants = ref([])
+  const loadingData = ref(false)
 
-const loadFabricants = async () => {
-  loadingData.value = true
-  
-  try {
-    fabricants.value = await api.get('fabricants/')
-  } catch (error) {
-    console.error('Error loading manufacturers:', error)
-  } finally {
-    loadingData.value = false
+  const loadFabricants = async () => {
+    loadingData.value = true
+
+    try {
+      fabricants.value = await api.get('fabricants/')
+    } catch (error) {
+      console.error('Error loading manufacturers:', error)
+    } finally {
+      loadingData.value = false
+    }
   }
-}
 
-const handleCreated = (newModel) => {
-  router.push({
-    name: 'ModelEquipmentDetail',
-    params: { id: newModel.id }
+  const handleCreated = (newModel) => {
+    router.push({
+      name: 'ModelEquipmentDetail',
+      params: { id: newModel.id },
+    })
+  }
+
+  const handleClose = () => {
+    router.push({ name: 'ModelEquipmentList' })
+  }
+
+  const handleFabricantCreated = (newFabricant) => {
+    fabricants.value.push(newFabricant)
+  }
+
+  onMounted(() => {
+    loadFabricants()
   })
-}
-
-const handleClose = () => {
-  router.push({ name: 'ModelEquipmentList' })
-}
-
-const handleFabricantCreated = (newFabricant) => {
-  fabricants.value.push(newFabricant)
-}
-
-onMounted(() => {
-  loadFabricants()
-})
 </script>

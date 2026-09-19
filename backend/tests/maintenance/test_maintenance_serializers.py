@@ -118,8 +118,12 @@ def test_should_sync_bon_travail_consommables_on_update_and_add():
     conso_remove = ConsommableFactory()
     conso_add = ConsommableFactory()
 
-    BonTravailConsommable.objects.create(bon_travail=bt, consommable=conso_keep, quantite_utilisee=1)
-    BonTravailConsommable.objects.create(bon_travail=bt, consommable=conso_remove, quantite_utilisee=4)
+    BonTravailConsommable.objects.create(
+        bon_travail=bt, consommable=conso_keep, quantite_utilisee=1
+    )
+    BonTravailConsommable.objects.create(
+        bon_travail=bt, consommable=conso_remove, quantite_utilisee=4
+    )
 
     serializer = BonTravailSerializer(
         instance=bt,
@@ -136,9 +140,20 @@ def test_should_sync_bon_travail_consommables_on_update_and_add():
     assert serializer.is_valid(), serializer.errors
     serializer.save()
 
-    assert BonTravailConsommable.objects.get(bon_travail=bt, consommable=conso_keep).quantite_utilisee == 7
-    assert BonTravailConsommable.objects.get(bon_travail=bt, consommable=conso_remove).quantite_utilisee == 4
-    assert BonTravailConsommable.objects.get(bon_travail=bt, consommable=conso_add).quantite_utilisee == 3
+    assert (
+        BonTravailConsommable.objects.get(bon_travail=bt, consommable=conso_keep).quantite_utilisee
+        == 7
+    )
+    assert (
+        BonTravailConsommable.objects.get(
+            bon_travail=bt, consommable=conso_remove
+        ).quantite_utilisee
+        == 4
+    )
+    assert (
+        BonTravailConsommable.objects.get(bon_travail=bt, consommable=conso_add).quantite_utilisee
+        == 3
+    )
 
 
 @pytest.mark.django_db

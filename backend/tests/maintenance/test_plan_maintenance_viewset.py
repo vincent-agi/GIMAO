@@ -9,7 +9,12 @@ from donnees.models import Document, TypeDocument
 from equipement.models import Declencher
 from maintenance.api.viewsets import PlanMaintenanceViewSet
 from maintenance.models import PlanMaintenance, PlanMaintenanceConsommable, PlanMaintenanceDocument
-from tests.factories import CompteurFactory, ConsommableFactory, PlanMaintenanceFactory, TypePlanMaintenanceFactory
+from tests.factories import (
+    CompteurFactory,
+    ConsommableFactory,
+    PlanMaintenanceFactory,
+    TypePlanMaintenanceFactory,
+)
 
 
 @pytest.fixture
@@ -205,9 +210,7 @@ def test_should_create_plan_with_consommables_when_payload_contains_lines(api_fa
                 "planMaintenance": {
                     "nom": "Plan avec consommable",
                     "type_id": type_plan.id,
-                    "consommables": [
-                        {"consommable_id": consommable.id, "quantite": 3}
-                    ],
+                    "consommables": [{"consommable_id": consommable.id, "quantite": 3}],
                 },
             }
         )
@@ -239,9 +242,7 @@ def test_should_return_400_when_create_with_invalid_consommable_line(api_factory
                 "planMaintenance": {
                     "nom": "Plan consommable invalide",
                     "type_id": type_plan.id,
-                    "consommables": [
-                        {"consommable_id": 999999, "quantite": 3}
-                    ],
+                    "consommables": [{"consommable_id": 999999, "quantite": 3}],
                 },
             }
         )
@@ -250,7 +251,10 @@ def test_should_return_400_when_create_with_invalid_consommable_line(api_factory
     view = PlanMaintenanceViewSet.as_view({"post": "create"})
     request = api_factory.post("/api/maintenance/plans-maintenance/", payload, format="multipart")
 
-    with patch("maintenance.api.viewsets.PlanMaintenanceConsommable.objects.create", side_effect=Exception("boom")):
+    with patch(
+        "maintenance.api.viewsets.PlanMaintenanceConsommable.objects.create",
+        side_effect=Exception("boom"),
+    ):
         response = view(request)
 
     assert response.status_code == 400
@@ -317,7 +321,9 @@ def test_should_return_400_when_create_document_has_invalid_type(api_factory):
     view = PlanMaintenanceViewSet.as_view({"post": "create"})
     request = api_factory.post("/api/maintenance/plans-maintenance/", payload, format="multipart")
 
-    with patch("maintenance.api.viewsets.Document.objects.create", side_effect=Exception("bad doc")):
+    with patch(
+        "maintenance.api.viewsets.Document.objects.create", side_effect=Exception("bad doc")
+    ):
         response = view(request)
 
     assert response.status_code == 400
@@ -386,7 +392,11 @@ def test_should_apply_changes_json_to_plan_and_consommables(api_factory):
     assert plan.nom == "Plan via changes"
     assert plan.necessitePermisFeu is True
 
-    assocs = list(PlanMaintenanceConsommable.objects.filter(plan_maintenance=plan).values("consommable_id", "quantite_necessaire"))
+    assocs = list(
+        PlanMaintenanceConsommable.objects.filter(plan_maintenance=plan).values(
+            "consommable_id", "quantite_necessaire"
+        )
+    )
     assert assocs == [{"consommable_id": new_consommable.id, "quantite_necessaire": 4}]
 
 

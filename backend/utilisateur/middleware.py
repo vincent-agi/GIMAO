@@ -4,8 +4,10 @@ import uuid
 
 _thread_locals = threading.local()
 
+
 def get_current_request():
-    return getattr(_thread_locals, 'request', None)
+    return getattr(_thread_locals, "request", None)
+
 
 def get_current_user():
     try:
@@ -21,32 +23,40 @@ def get_current_user():
             token_hash = hashlib.sha256(token.encode()).hexdigest()
             try:
                 from security.models import ApiToken
+
                 api_token = ApiToken.objects.get(token_hash=token_hash)
                 if api_token.is_valid():
                     return api_token.user
             except Exception:
                 pass
-                
+
         # Fallback pour le panel admin par exemple
-        if hasattr(request, 'user') and request.user.is_authenticated:
-            if hasattr(request.user, 'utilisateur'):
+        if hasattr(request, "user") and request.user.is_authenticated:
+            if hasattr(request.user, "utilisateur"):
                 return request.user.utilisateur
-            elif hasattr(request.user, 'username'):
+            elif hasattr(request.user, "username"):
                 from .models import Utilisateur
-                mapped_user = Utilisateur.objects.filter(nomUtilisateur=request.user.username).first()
+
+                mapped_user = Utilisateur.objects.filter(
+                    nomUtilisateur=request.user.username
+                ).first()
                 return mapped_user or request.user
             return request.user
-                
-    return getattr(_thread_locals, 'app_user', None)
+
+    return getattr(_thread_locals, "app_user", None)
+
 
 def set_thread_user(user):
     _thread_locals.app_user = user
 
+
 def get_thread_user():
     return get_current_user()
 
+
 def get_thread_log_group():
-    return getattr(_thread_locals, 'log_group_id', None)
+    return getattr(_thread_locals, "log_group_id", None)
+
 
 class CurrentUserMiddleware:
     def __init__(self, get_response):
@@ -59,10 +69,10 @@ class CurrentUserMiddleware:
         _thread_locals.log_group_id = uuid.uuid4()
 
         response = self.get_response(request)
-        if hasattr(_thread_locals, 'request'):
+        if hasattr(_thread_locals, "request"):
             del _thread_locals.request
-        if hasattr(_thread_locals, 'app_user'):
+        if hasattr(_thread_locals, "app_user"):
             del _thread_locals.app_user
-        if hasattr(_thread_locals, 'log_group_id'):
+        if hasattr(_thread_locals, "log_group_id"):
             del _thread_locals.log_group_id
         return response

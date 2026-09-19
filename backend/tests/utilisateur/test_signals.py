@@ -9,7 +9,13 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from tests.factories import RoleFactory, UtilisateurFactory
 from utilisateur.middleware import set_thread_user
 from utilisateur.models import Log
-from utilisateur.signals import capture_old_state, get_safe_app_user, log_delete, log_save, make_serializable
+from utilisateur.signals import (
+    capture_old_state,
+    get_safe_app_user,
+    log_delete,
+    log_save,
+    make_serializable,
+)
 
 
 @pytest.mark.django_db
@@ -147,9 +153,7 @@ def test_log_save_fallbacks_to_request_user_utilisateur_when_no_thread_user():
     Log.objects.all().delete()
     app_user = UtilisateurFactory()
 
-    request = SimpleNamespace(
-        user=SimpleNamespace(is_authenticated=True, utilisateur=app_user)
-    )
+    request = SimpleNamespace(user=SimpleNamespace(is_authenticated=True, utilisateur=app_user))
 
     with patch("utilisateur.middleware.get_current_request", return_value=request):
         role = RoleFactory(nomRole="RoleFallbackUtilisateur")

@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { useFormValidation } from '../useFormValidation'
 
 describe('useFormValidation.js', () => {
-
   it('gère un formulaire simple avec règles sous forme de tableau (strings et objects)', () => {
     const schema = {
       username: ['required', { name: 'minLength', params: [3], message: 'Trop court' }],
-      age: [{ name: 'numeric' }]
+      age: [{ name: 'numeric' }],
     }
-    const { getFieldRules, validateAll, errors, hasFieldError, getFieldErrors, clearErrors } = useFormValidation(schema)
+    const { getFieldRules, validateAll, hasFieldError, getFieldErrors, clearErrors } =
+      useFormValidation(schema)
 
     // Test getFieldRules
     const rules = getFieldRules('username')
@@ -30,40 +30,40 @@ describe('useFormValidation.js', () => {
     expect(hasFieldError('username')).toBeFalsy()
   })
 
-  it('gère un formulaire simple avec règles sous forme d\'objet', () => {
+  it("gère un formulaire simple avec règles sous forme d'objet", () => {
     const schema = {
       emailField: {
-        required: 'L\'email est obligatoire',
-        email: true
+        required: "L'email est obligatoire",
+        email: true,
       },
       amount: {
         required: true,
         numeric: true,
         positive: true,
         min: 10,
-        max: { value: 100, message: 'Max 100' }
+        max: { value: 100, message: 'Max 100' },
       },
       code: {
-        pattern: { value: /^[A-Z]+$/, message: 'Seulement majuscules' }
+        pattern: { value: /^[A-Z]+$/, message: 'Seulement majuscules' },
       },
       password: {
         minLength: 5,
-        maxLength: 10
+        maxLength: 10,
       },
       customField: {
-        custom: (val) => val === 'secret' || 'Incorrect'
-      }
+        custom: (val) => val === 'secret' || 'Incorrect',
+      },
     }
     const { validateAll, errors } = useFormValidation(schema)
 
-    const isInvalid = validateAll({ 
-      emailField: 'bad', 
+    const isInvalid = validateAll({
+      emailField: 'bad',
       amount: -5,
       code: 'abc',
       password: 'bad',
-      customField: 'wrong'
+      customField: 'wrong',
     })
-    
+
     expect(isInvalid).toBe(false)
     expect(errors.value.emailField[0]).toBe('Email invalide')
     expect(errors.value.amount.length).toBeGreaterThan(0) // positive error, min error... Note: validateField stops at first error usually
@@ -76,7 +76,7 @@ describe('useFormValidation.js', () => {
       amount: 50,
       code: 'ABC',
       password: 'password1',
-      customField: 'secret'
+      customField: 'secret',
     })
     expect(isValid).toBe(true)
   })
@@ -84,7 +84,7 @@ describe('useFormValidation.js', () => {
   it('gère les règles customs en fonction directe', () => {
     const customRule = (val) => val === 'ok' || 'Pas ok'
     const schema = {
-      champ: [customRule]
+      champ: [customRule],
     }
     const { validateAll, errors } = useFormValidation(schema)
 
@@ -97,11 +97,11 @@ describe('useFormValidation.js', () => {
   it('gère les formulaires multi-steps', () => {
     const schema = {
       step1: {
-        firstName: { required: true }
+        firstName: { required: true },
       },
       step2: {
-        lastName: { required: true }
-      }
+        lastName: { required: true },
+      },
     }
     const { validateStep, validateAll, currentStep } = useFormValidation(schema, { initialStep: 1 })
 
@@ -126,5 +126,4 @@ describe('useFormValidation.js', () => {
     const { getFieldRules } = useFormValidation({})
     expect(getFieldRules('unknown')).toEqual([])
   })
-
 })

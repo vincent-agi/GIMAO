@@ -15,32 +15,32 @@ const mockRouter = {
 }
 vi.mock('vue-router', () => ({
   useRouter: () => mockRouter,
-  useRoute: () => ({})
+  useRoute: () => ({}),
 }))
 
 const renderComponent = (props = {}) => {
   return render(FormActions, {
     props,
     global: {
-      plugins: [vuetify]
-    }
+      plugins: [vuetify],
+    },
   })
 }
 
 describe('FormActions.vue', () => {
   it('rend les boutons par défaut (Annuler et Enregistrer)', () => {
     renderComponent()
-    
+
     expect(screen.getByRole('button', { name: /Annuler/i })).not.toBeNull()
     expect(screen.getByRole('button', { name: /Enregistrer/i })).not.toBeNull()
     expect(screen.queryByRole('button', { name: /RÃ©initialiser/i })).toBeNull() // Pas affiché par défaut
   })
 
-  it('émet l\'événement submit quand on clique sur enregistrer', async () => {
+  it("émet l'événement submit quand on clique sur enregistrer", async () => {
     const { emitted } = renderComponent()
     const user = userEvent.setup()
-    
-    // WHEN on clique  
+
+    // WHEN on clique
     await user.click(screen.getByRole('button', { name: /Enregistrer/i }))
 
     // THEN l'event doit exister
@@ -50,7 +50,7 @@ describe('FormActions.vue', () => {
   it('appelle le retour du router ou event custom quand on annule', async () => {
     const { emitted } = renderComponent()
     const user = userEvent.setup()
-    
+
     // reset du mock pour éviter d'avoir le résultat d'un autre test
     mockRouter.go.mockClear()
 
@@ -62,26 +62,26 @@ describe('FormActions.vue', () => {
     expect(mockRouter.go).toHaveBeenCalledWith(-1)
   })
 
-  it('utilise l\'action annuler personnalisée si elle est founie', async () => {
+  it("utilise l'action annuler personnalisée si elle est founie", async () => {
     const customMock = vi.fn()
-    const { emitted } = renderComponent({ 
-      customCancelAction: customMock 
+    const { emitted } = renderComponent({
+      customCancelAction: customMock,
     })
-    
+
     const user = userEvent.setup()
     mockRouter.go.mockClear()
 
     await user.click(screen.getByRole('button', { name: /Annuler/i }))
 
     // Dans ce mode, 'cancel' n'est pas émis par le composant car le code dit de faire uniquement le custom()
-    expect(emitted().cancel).toBeFalsy() 
+    expect(emitted().cancel).toBeFalsy()
     expect(customMock).toHaveBeenCalled()
     expect(mockRouter.go).not.toHaveBeenCalled()
   })
 
   it('désactive le bouton Annuler et met en chargement le bouton Enregistrer', () => {
     renderComponent({ loading: true })
-    
+
     // Pour vuetify, un bouton "loading" n'a pas forcement l'attribut natif disabled tout de suite
     const cancelBtn = screen.getByRole('button', { name: /Annuler/i })
     expect(cancelBtn.disabled).toBe(true)

@@ -11,37 +11,37 @@
 </template>
 
 <script setup>
-import { defineProps } from 'vue';
+  import { defineProps } from 'vue'
 
-const props = defineProps({
-  message: {
-    type: String,
-    default: ''
-  },
-  type: {
-    type: String,
-    default: 'info',
-    validator: (value) => ['success', 'info', 'warning', 'error'].includes(value)
-  },
-  dismissible: {
-    type: Boolean,
-    default: false
-  },
-  alertClass: {
-    type: String,
-    default: 'mb-4'
+  defineProps({
+    message: {
+      type: String,
+      default: '',
+    },
+    type: {
+      type: String,
+      default: 'info',
+      validator: (value) => ['success', 'info', 'warning', 'error'].includes(value),
+    },
+    dismissible: {
+      type: Boolean,
+      default: false,
+    },
+    alertClass: {
+      type: String,
+      default: 'mb-4',
+    },
+  })
+
+  const emit = defineEmits(['close'])
+
+  const handleClose = () => {
+    emit('close')
   }
-});
-
-const emit = defineEmits(['close']);
-
-const handleClose = () => {
-  emit('close');
-};
 </script>
 
 <style scoped>
-.v-alert {
-  margin-bottom: 16px;
-}
+  .v-alert {
+    margin-bottom: 16px;
+  }
 </style>

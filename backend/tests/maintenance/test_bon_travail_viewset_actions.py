@@ -1,11 +1,11 @@
-import pytest
 import json
 
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIRequestFactory
 
-from maintenance.api.viewsets import BonTravailViewSet
 from donnees.models import Document, TypeDocument
+from maintenance.api.viewsets import BonTravailViewSet
 from maintenance.models import (
     BonTravail,
     BonTravailConsommable,
@@ -13,7 +13,12 @@ from maintenance.models import (
     DemandeIntervention,
 )
 from stock.models import Magasin, Stocker
-from tests.factories import BonTravailFactory, ConsommableFactory, EquipementFactory, UtilisateurFactory
+from tests.factories import (
+    BonTravailFactory,
+    ConsommableFactory,
+    EquipementFactory,
+    UtilisateurFactory,
+)
 
 
 @pytest.fixture
@@ -702,12 +707,14 @@ def test_should_create_di_bt_and_document_with_create_with_di(api_factory):
             "equipement_id": str(equipement.pk),
             "utilisateur_id": str(utilisateur.pk),
             "type": "CORRECTIF",
-            "documents": json.dumps([
-                {
-                    "nomDocument": "Notice BT",
-                    "typeDocument_id": type_document.pk,
-                }
-            ]),
+            "documents": json.dumps(
+                [
+                    {
+                        "nomDocument": "Notice BT",
+                        "typeDocument_id": type_document.pk,
+                    }
+                ]
+            ),
             "document_0": file_0,
         },
         format="multipart",
@@ -748,11 +755,13 @@ def test_should_rollback_create_with_di_when_document_type_is_missing(api_factor
             "equipement_id": str(equipement.pk),
             "utilisateur_id": str(utilisateur.pk),
             "type": "CORRECTIF",
-            "documents": json.dumps([
-                {
-                    "nomDocument": "Doc sans type",
-                }
-            ]),
+            "documents": json.dumps(
+                [
+                    {
+                        "nomDocument": "Doc sans type",
+                    }
+                ]
+            ),
             "document_0": file_0,
         },
         format="multipart",

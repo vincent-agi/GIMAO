@@ -1,8 +1,10 @@
 from django.core.management.base import BaseCommand
+
 from tasks.updateCalendarDates import update_calendar_counters
 
+
 class Command(BaseCommand):
-    help = 'Lance la mise à jour des dates de compteurs (Cron manuel)'
+    help = "Lance la mise à jour des dates de compteurs (Cron manuel)"
 
     def handle(self, *args, **options):
         self.stdout.write("Lancement du cron update_calendar_counters...")

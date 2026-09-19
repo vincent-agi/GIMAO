@@ -11,38 +11,38 @@
 </template>
 
 <script setup>
-import ConsommableForm from '@/components/Forms/ConsommableForm.vue';
-import { ref, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { useApi } from '@/composables/useApi';
-import { API_BASE_URL } from '@/utils/constants';
+  import ConsommableForm from '@/components/Forms/ConsommableForm.vue'
+  import { ref, onMounted } from 'vue'
+  import { useRouter, useRoute } from 'vue-router'
+  import { useApi } from '@/composables/useApi'
+  import { API_BASE_URL } from '@/utils/constants'
 
-const router = useRouter();
-const route = useRoute();
-const api = useApi(API_BASE_URL);
+  const router = useRouter()
+  const route = useRoute()
+  const api = useApi(API_BASE_URL)
 
-const consumable = ref(null);
+  const consumable = ref(null)
 
-const fetchConsumable = async () => {
+  const fetchConsumable = async () => {
     try {
-        const response = await api.get(`consommables/${route.params.id}/`);
-        consumable.value = response;
+      const response = await api.get(`consommables/${route.params.id}/`)
+      consumable.value = response
     } catch (error) {
-        console.error('Erreur chargement consommable', error);
-        // Redirect or show error?
-        // router.push('/stocks/consommables'); 
+      console.error('Erreur chargement consommable', error)
+      // Redirect or show error?
+      // router.push('/stocks/consommables');
     }
-};
+  }
 
-const handleConsommableUpdate = () => {
-  router.go(-1);
-}
+  const handleConsommableUpdate = () => {
+    router.go(-1)
+  }
 
-const handleClose = () => {
-  router.go(-1);
-}
+  const handleClose = () => {
+    router.go(-1)
+  }
 
-onMounted(() => {
-    fetchConsumable();
-});
+  onMounted(() => {
+    fetchConsumable()
+  })
 </script>

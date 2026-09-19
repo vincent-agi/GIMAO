@@ -14,7 +14,7 @@
       <v-expansion-panels variant="accordion">
         <v-expansion-panel>
           <v-expansion-panel-title>
-            <div class="d-flex align-center" style="gap: 12px;">
+            <div class="d-flex align-center" style="gap: 12px">
               <v-checkbox
                 :model-value="isModuleFullySelected([...types.affichage, ...types.action])"
                 :indeterminate="isModulePartiallySelected([...types.affichage, ...types.action])"
@@ -26,7 +26,10 @@
               />
               <span class="font-weight-medium">{{ types.nom }}</span>
               <v-chip size="x-small" color="primary" variant="tonal">
-                {{ [...types.affichage, ...types.action].filter(p => modelValue.includes(p.id)).length }}/{{ types.affichage.length + types.action.length }}
+                {{
+                  [...types.affichage, ...types.action].filter((p) => modelValue.includes(p.id))
+                    .length
+                }}/{{ types.affichage.length + types.action.length }}
               </v-chip>
             </div>
           </v-expansion-panel-title>
@@ -64,44 +67,48 @@
       </v-expansion-panels>
     </div>
 
-    <p v-if="Object.keys(filteredPermissionsByModule).length === 0" class="text-body-2 text-medium-emphasis">
+    <p
+      v-if="Object.keys(filteredPermissionsByModule).length === 0"
+      class="text-body-2 text-medium-emphasis"
+    >
       Aucune permission trouvée.
     </p>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { usePermissionSelector } from '@/composables/usePermissionSelector'
+  import { ref, computed } from 'vue'
+  import { usePermissionSelector } from '@/composables/usePermissionSelector'
 
-const props = defineProps({
-  allPermissions: { type: Array, required: true },
-  modelValue: { type: Array, required: true }
-})
+  const props = defineProps({
+    allPermissions: { type: Array, required: true },
+    modelValue: { type: Array, required: true },
+  })
 
-const emit = defineEmits(['update:modelValue'])
+  const emit = defineEmits(['update:modelValue'])
 
-const searchPerm = ref('')
+  const searchPerm = ref('')
 
-const selectedIds = computed({
-  get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
-})
+  const selectedIds = computed({
+    get: () => props.modelValue,
+    set: (val) => emit('update:modelValue', val),
+  })
 
-const allPermissionsRef = computed(() => props.allPermissions)
+  const allPermissionsRef = computed(() => props.allPermissions)
 
-const {
-  filteredPermissionsByModule,
-  isPermDisabledByHierarchy,
-  isModuleFullySelected,
-  isModulePartiallySelected,
-  toggleModule,
-  togglePermission,
-  applyHierarchy,
-} = usePermissionSelector(allPermissionsRef, selectedIds, searchPerm)
+  const {
+    filteredPermissionsByModule,
+    isPermDisabledByHierarchy,
+    isModuleFullySelected,
+    isModulePartiallySelected,
+    toggleModule,
+    togglePermission,
+    applyHierarchy,
+  } = usePermissionSelector(allPermissionsRef, selectedIds, searchPerm)
 
-const resetSearch = () => { searchPerm.value = '' }
+  const resetSearch = () => {
+    searchPerm.value = ''
+  }
 
-defineExpose({ applyHierarchy, resetSearch })
+  defineExpose({ applyHierarchy, resetSearch })
 </script>
-

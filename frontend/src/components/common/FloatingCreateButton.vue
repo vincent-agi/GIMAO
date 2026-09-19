@@ -16,54 +16,54 @@
 </template>
 
 <script setup>
-defineProps({
-  visible: {
-    type: Boolean,
-    default: true,
-  },
-  tooltip: {
-    type: String,
-    default: '',
-  },
-  icon: {
-    type: String,
-    default: 'mdi-plus',
-  },
-  color: {
-    type: String,
-    default: 'primary',
-  },
-  size: {
-    type: String,
-    default: 'large',
-  },
-  iconSize: {
-    type: String,
-    default: 'large',
-  },
-  elevation: {
-    type: [Number, String],
-    default: 4,
-  },
-  iconOnly: {
-    type: Boolean,
-    default: true,
-  },
-});
+  defineProps({
+    visible: {
+      type: Boolean,
+      default: true,
+    },
+    tooltip: {
+      type: String,
+      default: '',
+    },
+    icon: {
+      type: String,
+      default: 'mdi-plus',
+    },
+    color: {
+      type: String,
+      default: 'primary',
+    },
+    size: {
+      type: String,
+      default: 'large',
+    },
+    iconSize: {
+      type: String,
+      default: 'large',
+    },
+    elevation: {
+      type: [Number, String],
+      default: 4,
+    },
+    iconOnly: {
+      type: Boolean,
+      default: true,
+    },
+  })
 
-defineEmits(['click']);
+  defineEmits(['click'])
 </script>
 
 <style scoped>
-.floating-create-button {
-  position: fixed !important;
-  right: 24px;
-  bottom: 24px;
-  z-index: 100;
-}
+  .floating-create-button {
+    position: fixed !important;
+    right: 24px;
+    bottom: 24px;
+    z-index: 100;
+  }
 
-.floating-create-button:hover {
-  transform: scale(1.1);
-  transition: transform 0.2s ease;
-}
+  .floating-create-button:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+  }
 </style>

@@ -1,20 +1,18 @@
-import 'vuetify/styles';
-import { createVuetify } from 'vuetify';
-import * as components from 'vuetify/components';
-import * as directives from 'vuetify/directives';
-import { aliases, mdi } from 'vuetify/iconsets/mdi';
+import 'vuetify/styles'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import { aliases, mdi } from 'vuetify/iconsets/mdi'
 
-export const THEME_STORAGE_KEY = 'gimao-theme';
+export const THEME_STORAGE_KEY = 'gimao-theme'
 
 const getDefaultTheme = () => {
   if (typeof window === 'undefined') {
-    return 'light';
+    return 'light'
   }
 
-  return window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark'
-    ? 'dark'
-    : 'light';
-};
+  return window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light'
+}
 
 const vuetify = createVuetify({
   components,
@@ -57,6 +55,6 @@ const vuetify = createVuetify({
       },
     },
   },
-});
+})
 
-export default vuetify;
+export default vuetify

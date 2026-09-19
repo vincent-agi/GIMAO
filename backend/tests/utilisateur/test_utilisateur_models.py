@@ -57,7 +57,9 @@ def test_should_render_role_permission_and_utilisateur_permission_strings():
     permission = Permission.objects.create(nomPermission="stock:view")
 
     role_permission = RolePermission.objects.create(role=role, permission=permission)
-    utilisateur_permission = UtilisateurPermission.objects.create(utilisateur=user, permission=permission)
+    utilisateur_permission = UtilisateurPermission.objects.create(
+        utilisateur=user, permission=permission
+    )
 
     assert "Magasinier - stock:view" in str(role_permission)
     assert "user_model_test - stock:view" in str(utilisateur_permission)

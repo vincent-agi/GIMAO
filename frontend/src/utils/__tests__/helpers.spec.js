@@ -7,21 +7,16 @@ import {
   formatDate,
   formatDateTime,
   formatDuration,
-  toTimeInputValue
+  toTimeInputValue,
 } from '../helpers'
-import {
-  EQUIPMENT_STATUS,
-  EQUIPMENT_STATUS_COLORS,
-  INTERVENTION_STATUS_COLORS,
-} from '../constants'
+import { EQUIPMENT_STATUS, EQUIPMENT_STATUS_COLORS, INTERVENTION_STATUS_COLORS } from '../constants'
 
 describe('helpers.js', () => {
-
   describe('Fonctions de couleurs et libellés', () => {
     it('getStatusColor retourne la bonne couleur ou "grey"', () => {
       // Test d'une clé existante
       const knownKey = Object.keys(EQUIPMENT_STATUS_COLORS)[0]
-      if(knownKey) {
+      if (knownKey) {
         expect(getStatusColor(knownKey)).toBe(EQUIPMENT_STATUS_COLORS[knownKey])
       }
       expect(getStatusColor('XXX_UNKNOWN')).toBe('grey')
@@ -29,7 +24,7 @@ describe('helpers.js', () => {
 
     it('getStatusLabel retourne le bon libellé ou "Inconnu"', () => {
       const knownKey = Object.keys(EQUIPMENT_STATUS)[0]
-      if(knownKey) {
+      if (knownKey) {
         expect(getStatusLabel(knownKey)).toBe(EQUIPMENT_STATUS[knownKey])
       }
       expect(getStatusLabel('XXX_UNKNOWN')).toBe('Inconnu')
@@ -41,7 +36,7 @@ describe('helpers.js', () => {
 
     it('getInterventionStatusColor fonctionne comme prevu', () => {
       const knownKey = Object.keys(INTERVENTION_STATUS_COLORS)[0]
-      if(knownKey) {
+      if (knownKey) {
         expect(getInterventionStatusColor(knownKey)).toBe(INTERVENTION_STATUS_COLORS[knownKey])
       }
       expect(getInterventionStatusColor('XXX_UNKNOWN')).toBe('grey')
@@ -58,14 +53,14 @@ describe('helpers.js', () => {
     it('formatDateTime formate la date et heure', () => {
       expect(formatDateTime('')).toBe('Non spécifié')
       const formatted = formatDateTime('2026-03-30T10:30:00Z')
-      // Note : peut varier selon le fuseau horaire du serveur. 
+      // Note : peut varier selon le fuseau horaire du serveur.
       // On vérifie quelques inclusions clés.
       expect(formatted).toContain('30/03/2026')
     })
 
     it('formatDuration décompose correctement X jours hh:mm:ss', () => {
       expect(formatDuration(null)).toBe('Non spécifié')
-      
+
       // Cas simple
       expect(formatDuration('02:30:15')).toBe('2h 30m 15s')
       // Cas avec Jours
@@ -78,11 +73,10 @@ describe('helpers.js', () => {
       expect(toTimeInputValue(null)).toBe('')
       expect(toTimeInputValue(undefined)).toBe('')
       expect(toTimeInputValue('')).toBe('')
-      
+
       expect(toTimeInputValue('02:30:15')).toBe('2:30')
       expect(toTimeInputValue('1 02:30:00')).toBe('26:30')
       expect(toTimeInputValue('bad sequence')).toBe('')
     })
   })
-
 })

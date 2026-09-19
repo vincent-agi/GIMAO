@@ -9,4 +9,4 @@ global.ResizeObserver = class ResizeObserver {
   disconnect() {
     // do nothing
   }
-};
+}

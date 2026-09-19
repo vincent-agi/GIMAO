@@ -1,50 +1,51 @@
 import pytest
 from django.utils import timezone
 
+from maintenance.models import BonTravail, BonTravailConsommable, DemandeIntervention
 from tasks.counterCron import update_counter
-from maintenance.models import DemandeIntervention, BonTravail, BonTravailConsommable
 from tests.factories import (
-    RoleFactory,
-    UtilisateurFactory,
-    EquipementFactory,
-    PlanMaintenanceFactory,
+    BonTravailFactory,
     CompteurFactory,
+    ConsommableFactory,
     DeclencherFactory,
     DemandeInterventionFactory,
-    BonTravailFactory,
-    ConsommableFactory,
+    EquipementFactory,
     PlanMaintenanceConsommableFactory,
+    PlanMaintenanceFactory,
+    RoleFactory,
+    UtilisateurFactory,
 )
+
 
 @pytest.mark.django_db
 def test_should_create_bt_when_counter_reaches_85_percent():
     """
-    Test la règle métier critique : 
-    Si un compteur dépasse 85% de son seuil (ecartInterventions), 
+    Test la règle métier critique :
+    Si un compteur dépasse 85% de son seuil (ecartInterventions),
     le système doit générer automatiquement une Demande d'Intervention et un Bon de Travail.
     """
-    
+
     # ==========================================
     # GIVEN (Arrangement des données)
     # ==========================================
     # 1. Utilisateur système (requis par le script)
     role_resp = RoleFactory(nomRole="Responsable GMAO")
     admin = UtilisateurFactory(role=role_resp)
-    
+
     # 2. Equipement et plan de maintenance
     equipement = EquipementFactory(designation="Moteur Principal")
     plan = PlanMaintenanceFactory(nom="Graissage Roulements", equipement=equipement)
-    
+
     # 3. Compteur simulé à 86% du seuil (86 unités sur un seuil de 100)
     compteur = CompteurFactory(equipement=equipement, valeurCourante=86.0)
-    
+
     # 4. Paramétrage du déclenchement
     DeclencherFactory(
         compteur=compteur,
         planMaintenance=plan,
         derniereIntervention=0,
-        ecartInterventions=100.0,      # Le seuil à atteindre est 100
-        prochaineMaintenance=100.0
+        ecartInterventions=100.0,  # Le seuil à atteindre est 100
+        prochaineMaintenance=100.0,
     )
 
     # ==========================================
@@ -56,20 +57,20 @@ def test_should_create_bt_when_counter_reaches_85_percent():
     # ==========================================
     # THEN (Vérification des conséquences)
     # ==========================================
-    
+
     # 1. Vérification de la Demande d'Intervention (DI)
     di = DemandeIntervention.objects.filter(equipement=equipement).first()
     assert di is not None, "Une demande d'intervention aurait dû être créée (86% > 85%)."
     assert "Graissage Roulements" in di.nom
-    assert di.statut == 'TRANSFORMEE'
+    assert di.statut == "TRANSFORMEE"
     assert di.utilisateur.id == admin.id
 
     # 2. Vérification du Bon de Travail (BT) automatiquement rattaché
     bt = BonTravail.objects.filter(demande_intervention=di).first()
     assert bt is not None, "Un bon de travail aurait dû être créé en même temps que la DI."
     assert "Graissage Roulements" in bt.nom
-    assert bt.type == 'PREVENTIF'
-    assert bt.statut == 'EN_ATTENTE'
+    assert bt.type == "PREVENTIF"
+    assert bt.statut == "EN_ATTENTE"
     assert bt.responsable.id == admin.id
 
 
@@ -97,17 +98,13 @@ def test_should_not_create_duplicate_bt_when_active_bt_exists():
 
     # Un premier appel crée le BT
     update_counter()
-    assert BonTravail.objects.filter(
-        demande_intervention__equipement=equipement
-    ).count() == 1
+    assert BonTravail.objects.filter(demande_intervention__equipement=equipement).count() == 1
 
     # WHEN — deuxième appel
     update_counter()
 
     # THEN — toujours 1 seul BT, pas de doublon
-    assert BonTravail.objects.filter(
-        demande_intervention__equipement=equipement
-    ).count() == 1
+    assert BonTravail.objects.filter(demande_intervention__equipement=equipement).count() == 1
 
 
 @pytest.mark.django_db
@@ -206,7 +203,7 @@ def test_should_not_create_bt_when_no_system_user_exists():
     aucun BT ne doit être créé et une erreur doit être loggée.
     On mock Utilisateur dans le module pour éviter les contraintes FK PROTECT.
     """
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import MagicMock, patch
 
     # GIVEN — compteur en alerte, équipement valide (un vrai user est en base pour les FK)
     equipement = EquipementFactory()
@@ -251,8 +248,12 @@ def test_should_copy_plan_consommables_to_bt():
     # 2 consommables associés au plan
     conso1 = ConsommableFactory(designation="Filtre à huile")
     conso2 = ConsommableFactory(designation="Joint")
-    PlanMaintenanceConsommableFactory(plan_maintenance=plan, consommable=conso1, quantite_necessaire=1)
-    PlanMaintenanceConsommableFactory(plan_maintenance=plan, consommable=conso2, quantite_necessaire=3)
+    PlanMaintenanceConsommableFactory(
+        plan_maintenance=plan, consommable=conso1, quantite_necessaire=1
+    )
+    PlanMaintenanceConsommableFactory(
+        plan_maintenance=plan, consommable=conso2, quantite_necessaire=3
+    )
 
     compteur = CompteurFactory(equipement=equipement, valeurCourante=90.0)
     DeclencherFactory(
