@@ -45,7 +45,7 @@ const vehicules = [
 const server = setupServer(
   http.get(`${API_BASE_URL}vehicules/`, () => {
     return HttpResponse.json({ count: vehicules.length, results: vehicules })
-  }),
+  })
 )
 
 beforeAll(() => server.listen())
@@ -73,7 +73,7 @@ describe('VehicleList.vue', () => {
 
   it("affiche un état vide explicite quand aucun véhicule n'existe", async () => {
     server.use(
-      http.get(`${API_BASE_URL}vehicules/`, () => HttpResponse.json({ count: 0, results: [] })),
+      http.get(`${API_BASE_URL}vehicules/`, () => HttpResponse.json({ count: 0, results: [] }))
     )
 
     renderView()
@@ -84,9 +84,7 @@ describe('VehicleList.vue', () => {
   })
 
   it('affiche un message explicite en cas de défaillance réseau', async () => {
-    server.use(
-      http.get(`${API_BASE_URL}vehicules/`, () => new HttpResponse(null, { status: 500 })),
-    )
+    server.use(http.get(`${API_BASE_URL}vehicules/`, () => new HttpResponse(null, { status: 500 })))
 
     renderView()
 

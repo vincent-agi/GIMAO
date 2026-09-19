@@ -20,17 +20,23 @@ const server = setupServer(
     if (!body.nomLieu) {
       return new HttpResponse(null, { status: 400 })
     }
-    return HttpResponse.json({
-      id: 1,
-      ...body
-    }, { status: 201 })
+    return HttpResponse.json(
+      {
+        id: 1,
+        ...body,
+      },
+      { status: 201 }
+    )
   }),
   http.patch('/api/lieux/:id/', async ({ request, params }) => {
     const body = await request.json()
-    return HttpResponse.json({
-      id: params.id,
-      ...body
-    }, { status: 200 })
+    return HttpResponse.json(
+      {
+        id: params.id,
+        ...body,
+      },
+      { status: 200 }
+    )
   }),
   http.get('/api/lieux/hierarchy/', () => {
     return HttpResponse.json([]) // Utilisé pour le select parent
@@ -46,15 +52,15 @@ const renderForm = (props = {}) => {
     props,
     global: {
       plugins: [vuetify],
-      stubs: ['TreeView'] // Si y'a un composable complexe
-    }
+      stubs: ['TreeView'], // Si y'a un composable complexe
+    },
   })
 }
 
 describe('LieuForm.vue', () => {
   it('affiche le formulaire vide en mode création', () => {
     renderForm()
-    
+
     // Le titre de création par défaut est présent
     expect(screen.getByText('Ajouter un lieu')).toBeDefined()
     expect(screen.getByPlaceholderText('Saisir le nom du lieu')).toBeDefined()
@@ -65,12 +71,12 @@ describe('LieuForm.vue', () => {
   it.skip('pré-remplit le formulaire en mode édition', async () => {
     renderForm({
       isEdit: true,
-      initialData: { id: 10, nomLieu: 'Atelier A', typeLieu: 'Bâtiment' }
+      initialData: { id: 10, nomLieu: 'Atelier A', typeLieu: 'Bâtiment' },
     })
-    
+
     // Attendre que la props popule le form
     await waitFor(() => {
-      // Les input vuetify stockent leur value. 
+      // Les input vuetify stockent leur value.
       // testing-library trouve mieux via getByDisplayValue pour les inputs peuplés.
       expect(screen.getByDisplayValue('Atelier A')).toBeDefined()
       expect(screen.getByDisplayValue('Bâtiment')).toBeDefined()
@@ -79,7 +85,7 @@ describe('LieuForm.vue', () => {
 
   // Skip : le placeholder "Ex: Bâtiment, Salle, Atelier..." ne correspond plus
   // au champ Vuetify actuel du composant (test desynchronise du composant, a corriger).
-  it.skip('appelle la méthode d\'enregistrement lors de la soumission basique et emet created', async () => {
+  it.skip("appelle la méthode d'enregistrement lors de la soumission basique et emet created", async () => {
     const { emitted } = renderForm()
     const user = userEvent.setup()
 
@@ -91,7 +97,7 @@ describe('LieuForm.vue', () => {
     await user.type(typeInput, 'Atelier')
 
     // Attendre que Vuetify bind la valeur
-    await new Promise(r => setTimeout(r, 50)) 
+    await new Promise((r) => setTimeout(r, 50))
 
     // Cliquer sur le submit
     const submitBtn = screen.getByRole('button', { name: /Cr.*er|Enregistrer|Sauvegarder/i })
@@ -108,7 +114,7 @@ describe('LieuForm.vue', () => {
     const { emitted } = renderForm({
       isEdit: true,
       initialData: { id: 42, nomLieu: 'Bureau', typeLieu: 'Salle' },
-      title: 'Modifier le lieu'
+      title: 'Modifier le lieu',
     })
     const user = userEvent.setup()
 
@@ -128,7 +134,7 @@ describe('LieuForm.vue', () => {
     })
   })
 
-  it('affiche un message d\'erreur si l\'API renvoie une erreur', async () => {
+  it("affiche un message d'erreur si l'API renvoie une erreur", async () => {
     // Override API specifique
     server.use(
       http.post('/api/lieux/', () => {
@@ -141,9 +147,9 @@ describe('LieuForm.vue', () => {
 
     const nameInput = screen.getByPlaceholderText('Saisir le nom du lieu')
     await user.type(nameInput, 'Bug Zone')
-    
+
     // Le focus doit potentiellement blur pour la validation vee-validate vuetify
-    nameInput.blur();
+    nameInput.blur()
 
     const submitBtn = screen.getByRole('button', { name: /Cr.*er|Enregistrer|Sauvegarder/i })
     await user.click(submitBtn)

@@ -62,15 +62,29 @@
       </div>
 
       <v-alert
-        v-if="(formData.triggerMode === 'numeric' || formData.triggerMode === 'first') && numericCounters.length === 0"
-        type="warning" variant="tonal" density="compact" class="mb-2"
+        v-if="
+          (formData.triggerMode === 'numeric' || formData.triggerMode === 'first') &&
+          numericCounters.length === 0
+        "
+        type="warning"
+        variant="tonal"
+        density="compact"
+        class="mb-2"
       >
-        Aucun compteur numérique pour cet équipement. Utilisez le bouton "Ajouter un compteur" ci-dessous.
+        Aucun compteur numérique pour cet équipement. Utilisez le bouton "Ajouter un compteur"
+        ci-dessous.
       </v-alert>
 
-      <v-alert v-if="formData.triggerMode === 'first'" type="info" variant="tonal" density="compact" class="mb-4">
+      <v-alert
+        v-if="formData.triggerMode === 'first'"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-4"
+      >
         <v-icon start>mdi-information</v-icon>
-        Si le calendrier et le compteur arrivent à échéance en même temps, le calendrier est prioritaire.
+        Si le calendrier et le compteur arrivent à échéance en même temps, le calendrier est
+        prioritaire.
       </v-alert>
 
       <v-divider class="my-4" />
@@ -86,7 +100,10 @@
           :model-value="formData.seuilCalendaire"
           :est-glissant="formData.estGlissantCalendaire"
           :valeur-courante="calendarCounterValue"
-          @update:model-value="val => formData.seuilCalendaire = { ...val, estGlissant: formData.estGlissantCalendaire }"
+          @update:model-value="
+            (val) =>
+              (formData.seuilCalendaire = { ...val, estGlissant: formData.estGlissantCalendaire })
+          "
         />
 
         <v-row dense class="mt-2">
@@ -130,72 +147,82 @@
         </template>
 
         <template v-else>
-        <v-row dense>
-          <v-col cols="12" md="6">
-            <v-select
-              v-model="formData.numericCounterId"
-              :items="numericCounters"
-              item-title="nom"
-              item-value="id"
-              label="Compteur *"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-            >
-              <template #item="{ props: itemProps, item }">
-                <v-list-item v-bind="itemProps">
-                  <template #prepend>
-                    <v-icon :color="item.raw.estPrincipal ? 'primary' : 'grey'">
-                      {{ item.raw.estPrincipal ? 'mdi-star' : 'mdi-counter' }}
-                    </v-icon>
-                  </template>
-                  <v-list-item-title>
-                    {{ item.raw.nom }}
-                    <span v-if="item.raw.estPrincipal" class="text-caption text-primary ml-1">(Principal)</span>
-                  </v-list-item-title>
-                  <v-list-item-subtitle>{{ item.raw.valeurCourante }} {{ item.raw.unite }}</v-list-item-subtitle>
-                </v-list-item>
-              </template>
-            </v-select>
-          </v-col>
-          <v-col cols="12" md="6" v-if="selectedNumericCounter">
-            <v-text-field
-              :model-value="`${selectedNumericCounter.valeurCourante} ${selectedNumericCounter.unite}`"
-              label="Valeur actuelle"
-              variant="outlined"
-              density="comfortable"
-              readonly
-              hide-details
-            />
-          </v-col>
-        </v-row>
+          <v-row dense>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="formData.numericCounterId"
+                :items="numericCounters"
+                item-title="nom"
+                item-value="id"
+                label="Compteur *"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+              >
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps">
+                    <template #prepend>
+                      <v-icon :color="item.raw.estPrincipal ? 'primary' : 'grey'">
+                        {{ item.raw.estPrincipal ? 'mdi-star' : 'mdi-counter' }}
+                      </v-icon>
+                    </template>
+                    <v-list-item-title>
+                      {{ item.raw.nom }}
+                      <span v-if="item.raw.estPrincipal" class="text-caption text-primary ml-1"
+                        >(Principal)</span
+                      >
+                    </v-list-item-title>
+                    <v-list-item-subtitle
+                      >{{ item.raw.valeurCourante }} {{ item.raw.unite }}</v-list-item-subtitle
+                    >
+                  </v-list-item>
+                </template>
+              </v-select>
+            </v-col>
+            <v-col v-if="selectedNumericCounter" cols="12" md="6">
+              <v-text-field
+                :model-value="`${selectedNumericCounter.valeurCourante} ${selectedNumericCounter.unite}`"
+                label="Valeur actuelle"
+                variant="outlined"
+                density="comfortable"
+                readonly
+                hide-details
+              />
+            </v-col>
+          </v-row>
 
-        <v-row dense class="mt-3">
-          <v-col cols="12">
-            <SeuilNumerique
-              :model-value="formData.seuilNumerique"
-              :est-glissant="formData.estGlissantNumerique"
-              :valeur-courante="selectedNumericCounter?.valeurCourante ?? null"
-              :unite="selectedNumericCounter?.unite ?? ''"
-              @update:model-value="val => formData.seuilNumerique = { ...val, estGlissant: formData.estGlissantNumerique }"
-            />
-          </v-col>
-        </v-row>
+          <v-row dense class="mt-3">
+            <v-col cols="12">
+              <SeuilNumerique
+                :model-value="formData.seuilNumerique"
+                :est-glissant="formData.estGlissantNumerique"
+                :valeur-courante="selectedNumericCounter?.valeurCourante ?? null"
+                :unite="selectedNumericCounter?.unite ?? ''"
+                @update:model-value="
+                  (val) =>
+                    (formData.seuilNumerique = {
+                      ...val,
+                      estGlissant: formData.estGlissantNumerique,
+                    })
+                "
+              />
+            </v-col>
+          </v-row>
 
-        <v-row dense class="mt-2">
-          <v-col cols="12" md="4">
-            <v-checkbox
-              v-model="formData.estGlissantNumerique"
-              label="Seuil glissant"
-              density="comfortable"
-              hide-details
-              color="primary"
-            />
-          </v-col>
-        </v-row>
+          <v-row dense class="mt-2">
+            <v-col cols="12" md="4">
+              <v-checkbox
+                v-model="formData.estGlissantNumerique"
+                label="Seuil glissant"
+                density="comfortable"
+                hide-details
+                color="primary"
+              />
+            </v-col>
+          </v-row>
 
-        <v-divider class="my-4" />
-        </template><!-- fin v-else (compteurs disponibles) -->
+          <v-divider class="my-4" /> </template
+        ><!-- fin v-else (compteurs disponibles) -->
       </template>
 
       <!-- Opération de maintenance -->
@@ -289,10 +316,22 @@
       </v-card-subtitle>
       <v-row dense>
         <v-col cols="12" md="6">
-          <v-checkbox v-model="formData.necessiteHabilitationElectrique" label="Habilitation électrique" color="orange" density="comfortable" hide-details />
+          <v-checkbox
+            v-model="formData.necessiteHabilitationElectrique"
+            label="Habilitation électrique"
+            color="orange"
+            density="comfortable"
+            hide-details
+          />
         </v-col>
         <v-col cols="12" md="6">
-          <v-checkbox v-model="formData.necessitePermisFeu" label="Permis feu" color="red" density="comfortable" hide-details />
+          <v-checkbox
+            v-model="formData.necessitePermisFeu"
+            label="Permis feu"
+            color="red"
+            density="comfortable"
+            hide-details
+          />
         </v-col>
       </v-row>
     </template>
@@ -327,264 +366,313 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
-import { useApi } from '@/composables/useApi'
-import { API_BASE_URL } from '@/utils/constants'
-import SeuilCalendaire from '@/components/Forms/Seuil/SeuilCalendaire.vue'
-import SeuilNumerique from '@/components/Forms/Seuil/SeuilNumerique.vue'
-import CounterInlineForm from '@/components/Forms/CounterInlineForm.vue'
+  import { ref, computed, watch } from 'vue'
+  import { useApi } from '@/composables/useApi'
+  import { API_BASE_URL } from '@/utils/constants'
+  import SeuilCalendaire from '@/components/Forms/Seuil/SeuilCalendaire.vue'
+  import SeuilNumerique from '@/components/Forms/Seuil/SeuilNumerique.vue'
+  import CounterInlineForm from '@/components/Forms/CounterInlineForm.vue'
 
-const props = defineProps({
-  equipments:         { type: Array,  default: () => [] },
-  typesPM:            { type: Array,  default: () => [] },
-  consumables:        { type: Array,  default: () => [] },
-  initialEquipmentId: { type: Number, default: null },
-})
+  const props = defineProps({
+    equipments: { type: Array, default: () => [] },
+    typesPM: { type: Array, default: () => [] },
+    consumables: { type: Array, default: () => [] },
+    initialEquipmentId: { type: Number, default: null },
+  })
 
-const emit = defineEmits(['saved', 'cancel'])
+  const emit = defineEmits(['saved', 'cancel'])
 
-const api = useApi(API_BASE_URL)
+  const api = useApi(API_BASE_URL)
 
-const anticipationOptions = [
-  { label: 'Aucune anticipation', value: null },
-  { label: '5 jours avant', value: 5 },
-  { label: '1 semaine avant', value: 7 },
-]
+  const anticipationOptions = [
+    { label: 'Aucune anticipation', value: null },
+    { label: '5 jours avant', value: 5 },
+    { label: '1 semaine avant', value: 7 },
+  ]
 
-const loadingCounters = ref(false)
-const loading = ref(false)
-const localError = ref('')
-const equipmentCounters = ref([])
-const showAddCounterDialog = ref(false)
-const newCounter = ref(emptyCounter())
+  const loadingCounters = ref(false)
+  const loading = ref(false)
+  const localError = ref('')
+  const equipmentCounters = ref([])
+  const showAddCounterDialog = ref(false)
+  const newCounter = ref(emptyCounter())
 
-function emptyCounter() {
-  return { nomCompteur: '', valeurCourante: 0, unite: 'heures', estPrincipal: false, type: 'Numérique', isDefaultCalendar: false }
-}
-
-const formData = ref(emptyForm())
-
-function emptyForm() {
-  return {
-    equipement_id: null,
-    triggerMode: 'calendar',
-    // calendar
-    seuilCalendaire: { derniereIntervention: null, ecartInterventions: 0, prochaineMaintenance: null, uniteCalendaire: 'days', ecartCalendaire: 0 },
-    estGlissantCalendaire: false,
-    anticipation: null,
-    // numeric
-    numericCounterId: null,
-    seuilNumerique: { derniereIntervention: 0, ecartInterventions: 0, prochaineMaintenance: 0 },
-    estGlissantNumerique: false,
-    // PM info
-    nom: '',
-    type_id: null,
-    description: '',
-    consommables: [],
-    necessiteHabilitationElectrique: false,
-    necessitePermisFeu: false,
-  }
-}
-
-const calendarCounter = computed(() =>
-  equipmentCounters.value.find(c =>
-    c.isDefaultCalendar === true ||
-    c.type?.toLowerCase() === 'calendaire' ||
-    c.unite === 'date'
-  )
-)
-const hasCalendarCounter = computed(() => !!calendarCounter.value)
-const calendarCounterValue = computed(() => calendarCounter.value?.valeurCourante ?? null)
-
-const numericCounters = computed(() =>
-  equipmentCounters.value.filter(c =>
-    c.isDefaultCalendar !== true &&
-    c.type?.toLowerCase() !== 'calendaire' &&
-    c.unite !== 'date'
-  )
-)
-
-const selectedNumericCounter = computed(() =>
-  numericCounters.value.find(c => c.id === formData.value.numericCounterId) ?? null
-)
-
-const onEquipementChange = async (id) => {
-  formData.value = emptyForm()
-  formData.value.equipement_id = id
-  equipmentCounters.value = []
-  if (!id) return
-
-  loadingCounters.value = true
-  try {
-    const eq = await api.get(`equipement/${id}/affichage/`, { seuils_lite: true })
-    equipmentCounters.value = eq.compteurs || []
-    // Pré-sélectionner le premier compteur numérique
-    if (numericCounters.value.length > 0) {
-      formData.value.numericCounterId = numericCounters.value[0].id
-    }
-  } catch (e) {
-    console.error(e)
-  } finally {
-    loadingCounters.value = false
-  }
-}
-
-const saveNewCounter = async () => {
-  try {
-    const fd = new FormData()
-    const counterData = {
-      nom: newCounter.value.nomCompteur,
-      unite: newCounter.value.unite,
-      valeurCourante: newCounter.value.valeurCourante ?? 0,
-      estPrincipal: newCounter.value.estPrincipal,
-      equipement: formData.value.equipement_id,
-      type: newCounter.value.type
-    }
-    fd.append('compteur', JSON.stringify(counterData))
-    await api.post('compteurs/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-
-    // Rafraîchir les compteurs de l'équipement
-    const eq = await api.get(`equipement/${formData.value.equipement_id}/affichage/`, { seuils_lite: true })
-    equipmentCounters.value = eq.compteurs || []
-    // Pré-sélectionner le compteur créé
-    if (numericCounters.value.length > 0 && !formData.value.numericCounterId) {
-      formData.value.numericCounterId = numericCounters.value[numericCounters.value.length - 1].id
-    }
-    showAddCounterDialog.value = false
-    newCounter.value = emptyCounter()
-  } catch (e) {
-    console.error('Erreur création compteur:', e)
-  }
-}
-
-const createCalendarCounter = async (equipementId) => {
-  try {
-    const today = new Date()
-    const yyyy = today.getFullYear()
-    const mm = String(today.getMonth() + 1).padStart(2, '0')
-    const dd = String(today.getDate()).padStart(2, '0')
-    const todayISO = `${yyyy}-${mm}-${dd}`
-
-    const fd = new FormData()
-    fd.append('compteur', JSON.stringify({
-      nom: 'Calendrier',
-      valeurCourante: todayISO,
-      unite: 'date',
+  function emptyCounter() {
+    return {
+      nomCompteur: '',
+      valeurCourante: 0,
+      unite: 'heures',
       estPrincipal: false,
-      equipement: equipementId,
-      type: 'Calendaire'
-    }))
-    const res = await api.post('compteurs/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-    // Rafraîchir les compteurs
-    const eq = await api.get(`equipement/${equipementId}/affichage/`, { seuils_lite: true })
-    equipmentCounters.value = eq.compteurs || []
-    return res?.id ?? calendarCounter.value?.id ?? null
-  } catch (e) {
-    console.error('Erreur création compteur calendaire:', e)
-    return null
+      type: 'Numérique',
+      isDefaultCalendar: false,
+    }
   }
-}
 
-// Pré-charger l'équipement si fourni par le parent
-watch(() => props.initialEquipmentId, async (id) => {
-  if (id && id !== formData.value.equipement_id) {
-    await onEquipementChange(id)
+  const formData = ref(emptyForm())
+
+  function emptyForm() {
+    return {
+      equipement_id: null,
+      triggerMode: 'calendar',
+      // calendar
+      seuilCalendaire: {
+        derniereIntervention: null,
+        ecartInterventions: 0,
+        prochaineMaintenance: null,
+        uniteCalendaire: 'days',
+        ecartCalendaire: 0,
+      },
+      estGlissantCalendaire: false,
+      anticipation: null,
+      // numeric
+      numericCounterId: null,
+      seuilNumerique: { derniereIntervention: 0, ecartInterventions: 0, prochaineMaintenance: 0 },
+      estGlissantNumerique: false,
+      // PM info
+      nom: '',
+      type_id: null,
+      description: '',
+      consommables: [],
+      necessiteHabilitationElectrique: false,
+      necessitePermisFeu: false,
+    }
   }
-}, { immediate: true })
 
-// Reset le mode si les compteurs ne supportent pas le choix
-watch(numericCounters, (list) => {
-  if (list.length === 0 && (formData.value.triggerMode === 'numeric' || formData.value.triggerMode === 'first')) {
-    formData.value.triggerMode = 'calendar'
+  const calendarCounter = computed(() =>
+    equipmentCounters.value.find(
+      (c) =>
+        c.isDefaultCalendar === true || c.type?.toLowerCase() === 'calendaire' || c.unite === 'date'
+    )
+  )
+  const hasCalendarCounter = computed(() => !!calendarCounter.value)
+  const calendarCounterValue = computed(() => calendarCounter.value?.valeurCourante ?? null)
+
+  const numericCounters = computed(() =>
+    equipmentCounters.value.filter(
+      (c) =>
+        c.isDefaultCalendar !== true && c.type?.toLowerCase() !== 'calendaire' && c.unite !== 'date'
+    )
+  )
+
+  const selectedNumericCounter = computed(
+    () => numericCounters.value.find((c) => c.id === formData.value.numericCounterId) ?? null
+  )
+
+  const onEquipementChange = async (id) => {
+    formData.value = emptyForm()
+    formData.value.equipement_id = id
+    equipmentCounters.value = []
+    if (!id) return
+
+    loadingCounters.value = true
+    try {
+      const eq = await api.get(`equipement/${id}/affichage/`, { seuils_lite: true })
+      equipmentCounters.value = eq.compteurs || []
+      // Pré-sélectionner le premier compteur numérique
+      if (numericCounters.value.length > 0) {
+        formData.value.numericCounterId = numericCounters.value[0].id
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      loadingCounters.value = false
+    }
   }
-})
 
-const addConsommable = () => {
-  formData.value.consommables.push({ consommable_id: null, quantite_necessaire: 1 })
-}
+  const saveNewCounter = async () => {
+    try {
+      const fd = new FormData()
+      const counterData = {
+        nom: newCounter.value.nomCompteur,
+        unite: newCounter.value.unite,
+        valeurCourante: newCounter.value.valeurCourante ?? 0,
+        estPrincipal: newCounter.value.estPrincipal,
+        equipement: formData.value.equipement_id,
+        type: newCounter.value.type,
+      }
+      fd.append('compteur', JSON.stringify(counterData))
+      await api.post('compteurs/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
 
-const isValid = computed(() => {
-  if (!formData.value.equipement_id) return false
-  if (!formData.value.nom?.trim()) return false
-  if (!formData.value.type_id) return false
-
-  if (formData.value.triggerMode === 'calendar' || formData.value.triggerMode === 'first') {
-    if (!Number(formData.value.seuilCalendaire.ecartInterventions) > 0) return false
+      // Rafraîchir les compteurs de l'équipement
+      const eq = await api.get(`equipement/${formData.value.equipement_id}/affichage/`, {
+        seuils_lite: true,
+      })
+      equipmentCounters.value = eq.compteurs || []
+      // Pré-sélectionner le compteur créé
+      if (numericCounters.value.length > 0 && !formData.value.numericCounterId) {
+        formData.value.numericCounterId = numericCounters.value[numericCounters.value.length - 1].id
+      }
+      showAddCounterDialog.value = false
+      newCounter.value = emptyCounter()
+    } catch (e) {
+      console.error('Erreur création compteur:', e)
+    }
   }
-  if (formData.value.triggerMode === 'numeric' || formData.value.triggerMode === 'first') {
-    if (!formData.value.numericCounterId) return false
-    if (!(Number(formData.value.seuilNumerique.ecartInterventions) > 0)) return false
+
+  const createCalendarCounter = async (equipementId) => {
+    try {
+      const today = new Date()
+      const yyyy = today.getFullYear()
+      const mm = String(today.getMonth() + 1).padStart(2, '0')
+      const dd = String(today.getDate()).padStart(2, '0')
+      const todayISO = `${yyyy}-${mm}-${dd}`
+
+      const fd = new FormData()
+      fd.append(
+        'compteur',
+        JSON.stringify({
+          nom: 'Calendrier',
+          valeurCourante: todayISO,
+          unite: 'date',
+          estPrincipal: false,
+          equipement: equipementId,
+          type: 'Calendaire',
+        })
+      )
+      const res = await api.post('compteurs/', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      // Rafraîchir les compteurs
+      const eq = await api.get(`equipement/${equipementId}/affichage/`, { seuils_lite: true })
+      equipmentCounters.value = eq.compteurs || []
+      return res?.id ?? calendarCounter.value?.id ?? null
+    } catch (e) {
+      console.error('Erreur création compteur calendaire:', e)
+      return null
+    }
   }
-  return true
-})
 
-const buildFormData = (seuil, compteurId, estGlissant, anticipationDays, modeDeclenchement) => {
-  const fd = new FormData()
+  // Pré-charger l'équipement si fourni par le parent
+  watch(
+    () => props.initialEquipmentId,
+    async (id) => {
+      if (id && id !== formData.value.equipement_id) {
+        await onEquipementChange(id)
+      }
+    },
+    { immediate: true }
+  )
 
-  fd.append('compteur', String(compteurId))
+  // Reset le mode si les compteurs ne supportent pas le choix
+  watch(numericCounters, (list) => {
+    if (
+      list.length === 0 &&
+      (formData.value.triggerMode === 'numeric' || formData.value.triggerMode === 'first')
+    ) {
+      formData.value.triggerMode = 'calendar'
+    }
+  })
 
-  fd.append('seuil', JSON.stringify({
-    derniereIntervention: seuil.derniereIntervention ?? null,
-    ecartInterventions: seuil.ecartInterventions ?? 0,
-    prochaineMaintenance: seuil.prochaineMaintenance ?? null,
-    estGlissant: !!estGlissant,
-  }))
+  const addConsommable = () => {
+    formData.value.consommables.push({ consommable_id: null, quantite_necessaire: 1 })
+  }
 
-  fd.append('planMaintenance', JSON.stringify({
-    id: null,
-    nom: formData.value.nom,
-    type_id: formData.value.type_id,
-    commentaire: formData.value.description || '',
-    necessiteHabilitationElectrique: !!formData.value.necessiteHabilitationElectrique,
-    necessitePermisFeu: !!formData.value.necessitePermisFeu,
-    consommables: formData.value.consommables.filter(c => c.consommable_id),
-    documents: [],
-  }))
-
-  if (anticipationDays) fd.append('anticipationJours', String(anticipationDays))
-  if (modeDeclenchement) fd.append('mode_declenchement', modeDeclenchement)
-
-  return fd
-}
-
-const handleSave = async () => {
-  if (!isValid.value) return
-  loading.value = true
-  localError.value = ''
-
-  try {
-    const requests = []
-    const opts = { headers: { 'Content-Type': 'multipart/form-data' } }
+  const isValid = computed(() => {
+    if (!formData.value.equipement_id) return false
+    if (!formData.value.nom?.trim()) return false
+    if (!formData.value.type_id) return false
 
     if (formData.value.triggerMode === 'calendar' || formData.value.triggerMode === 'first') {
-      let compteurId = calendarCounter.value?.id
-      if (!compteurId) {
-        // Créer le compteur calendaire automatiquement
-        compteurId = await createCalendarCounter(formData.value.equipement_id)
-        if (!compteurId) throw new Error('Impossible de créer le compteur calendaire.')
-      }
-      const mode = formData.value.triggerMode === 'first' ? 'premier' : null
-      requests.push(api.post('declenchements/', buildFormData(
-        formData.value.seuilCalendaire, compteurId, formData.value.estGlissantCalendaire,
-        formData.value.anticipation, mode
-      ), opts))
+      if (!Number(formData.value.seuilCalendaire.ecartInterventions) > 0) return false
     }
-
     if (formData.value.triggerMode === 'numeric' || formData.value.triggerMode === 'first') {
-      const mode = formData.value.triggerMode === 'first' ? 'premier' : null
-      requests.push(api.post('declenchements/', buildFormData(
-        formData.value.seuilNumerique, formData.value.numericCounterId,
-        formData.value.estGlissantNumerique, null, mode
-      ), opts))
+      if (!formData.value.numericCounterId) return false
+      if (!(Number(formData.value.seuilNumerique.ecartInterventions) > 0)) return false
     }
+    return true
+  })
 
-    await Promise.all(requests)
-    emit('saved', formData.value.equipement_id)
-  } catch (e) {
-    console.error(e)
-    localError.value = e.message || 'Une erreur est survenue lors de l\'enregistrement.'
-  } finally {
-    loading.value = false
+  const buildFormData = (seuil, compteurId, estGlissant, anticipationDays, modeDeclenchement) => {
+    const fd = new FormData()
+
+    fd.append('compteur', String(compteurId))
+
+    fd.append(
+      'seuil',
+      JSON.stringify({
+        derniereIntervention: seuil.derniereIntervention ?? null,
+        ecartInterventions: seuil.ecartInterventions ?? 0,
+        prochaineMaintenance: seuil.prochaineMaintenance ?? null,
+        estGlissant: !!estGlissant,
+      })
+    )
+
+    fd.append(
+      'planMaintenance',
+      JSON.stringify({
+        id: null,
+        nom: formData.value.nom,
+        type_id: formData.value.type_id,
+        commentaire: formData.value.description || '',
+        necessiteHabilitationElectrique: !!formData.value.necessiteHabilitationElectrique,
+        necessitePermisFeu: !!formData.value.necessitePermisFeu,
+        consommables: formData.value.consommables.filter((c) => c.consommable_id),
+        documents: [],
+      })
+    )
+
+    if (anticipationDays) fd.append('anticipationJours', String(anticipationDays))
+    if (modeDeclenchement) fd.append('mode_declenchement', modeDeclenchement)
+
+    return fd
   }
-}
+
+  const handleSave = async () => {
+    if (!isValid.value) return
+    loading.value = true
+    localError.value = ''
+
+    try {
+      const requests = []
+      const opts = { headers: { 'Content-Type': 'multipart/form-data' } }
+
+      if (formData.value.triggerMode === 'calendar' || formData.value.triggerMode === 'first') {
+        let compteurId = calendarCounter.value?.id
+        if (!compteurId) {
+          // Créer le compteur calendaire automatiquement
+          compteurId = await createCalendarCounter(formData.value.equipement_id)
+          if (!compteurId) throw new Error('Impossible de créer le compteur calendaire.')
+        }
+        const mode = formData.value.triggerMode === 'first' ? 'premier' : null
+        requests.push(
+          api.post(
+            'declenchements/',
+            buildFormData(
+              formData.value.seuilCalendaire,
+              compteurId,
+              formData.value.estGlissantCalendaire,
+              formData.value.anticipation,
+              mode
+            ),
+            opts
+          )
+        )
+      }
+
+      if (formData.value.triggerMode === 'numeric' || formData.value.triggerMode === 'first') {
+        const mode = formData.value.triggerMode === 'first' ? 'premier' : null
+        requests.push(
+          api.post(
+            'declenchements/',
+            buildFormData(
+              formData.value.seuilNumerique,
+              formData.value.numericCounterId,
+              formData.value.estGlissantNumerique,
+              null,
+              mode
+            ),
+            opts
+          )
+        )
+      }
+
+      await Promise.all(requests)
+      emit('saved', formData.value.equipement_id)
+    } catch (e) {
+      console.error(e)
+      localError.value = e.message || "Une erreur est survenue lors de l'enregistrement."
+    } finally {
+      loading.value = false
+    }
+  }
 </script>

@@ -2,7 +2,9 @@
   <div class="py-2">
     <!-- Intro -->
     <div class="text-body-2 mb-4">
-      En tant que responsable GMAO, vous avez un accès complet à l'application : gestion des demandes d'intervention, planification des bons de travail, supervision des équipements et des stocks, administration des utilisateurs et autres paramètres.
+      En tant que responsable GMAO, vous avez un accès complet à l'application : gestion des
+      demandes d'intervention, planification des bons de travail, supervision des équipements et des
+      stocks, administration des utilisateurs et autres paramètres.
     </div>
 
     <!-- Onglets -->
@@ -19,7 +21,7 @@
 
     <v-window v-model="tab">
       <v-window-item value="connexion">
-        <ConnexionTab :hasMenu="true" role="responsable" />
+        <ConnexionTab :has-menu="true" role="responsable" />
       </v-window-item>
 
       <v-window-item value="dashboard">
@@ -49,22 +51,21 @@
       <v-window-item value="donnees">
         <SecondaryDataTab />
       </v-window-item>
-
     </v-window>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+  import { ref } from 'vue'
 
-import ConnexionTab from "./Auth/ConnexionTab.vue";
-import DashboardTab from "./Dashboard/DashboardTab.vue";
-import DIGeneralTab from "./DI/DIGeneralTab.vue";
-import EquipementsTab from "./Equipments/EquipementsTab.vue";
-import BTGeneralTab from "./BT/BTGeneralTab.vue";
-import StockGeneralTab from "./Stock/StockGeneralTab.vue";
-import RolesManagementTab from "./Admin/RolesManagementTab.vue";
-import SecondaryDataTab from "./Admin/SecondaryDataTab.vue";
+  import ConnexionTab from './Auth/ConnexionTab.vue'
+  import DashboardTab from './Dashboard/DashboardTab.vue'
+  import DIGeneralTab from './DI/DIGeneralTab.vue'
+  import EquipementsTab from './Equipments/EquipementsTab.vue'
+  import BTGeneralTab from './BT/BTGeneralTab.vue'
+  import StockGeneralTab from './Stock/StockGeneralTab.vue'
+  import RolesManagementTab from './Admin/RolesManagementTab.vue'
+  import SecondaryDataTab from './Admin/SecondaryDataTab.vue'
 
-const tab = ref("dashboard");
+  const tab = ref('dashboard')
 </script>

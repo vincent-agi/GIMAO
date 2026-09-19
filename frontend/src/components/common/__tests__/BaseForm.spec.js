@@ -14,18 +14,18 @@ describe('BaseForm.vue', () => {
     render(BaseForm, {
       props: {
         modelValue: {},
-        title: 'Tester BaseForm'
+        title: 'Tester BaseForm',
       },
-      global: { plugins: [vuetify] }
+      global: { plugins: [vuetify] },
     })
-    
+
     expect(screen.getByText('Tester BaseForm')).toBeDefined()
     expect(screen.getByRole('button', { name: /Sauvegarder|Enregistrer/i })).toBeDefined()
   })
 
-// Removed failing async submit test
+  // Removed failing async submit test
 
-  it('affiche une erreur propre et reset s\'il y a une action cancel', async () => {
+  it("affiche une erreur propre et reset s'il y a une action cancel", async () => {
     let cancelCalled = false
     render(BaseForm, {
       props: {
@@ -33,9 +33,11 @@ describe('BaseForm.vue', () => {
         title: 'Form Err',
         errorMessage: 'Alerte Initiale',
         // Mock customCancelAction pour éviter l'appel à router.go dans FormActions s'il est utilisé
-        customCancelAction: () => { cancelCalled = true }
+        customCancelAction: () => {
+          cancelCalled = true
+        },
       },
-      global: { plugins: [vuetify] }
+      global: { plugins: [vuetify] },
     })
 
     expect(screen.getByText('Alerte Initiale')).toBeDefined()

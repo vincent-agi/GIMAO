@@ -15,17 +15,23 @@ const vuetify = createVuetify({ components, directives })
 const server = setupServer(
   http.post('/api/magasins/', async ({ request }) => {
     const body = await request.json()
-    return HttpResponse.json({
-      id: 5,
-      ...body
-    }, { status: 201 })
+    return HttpResponse.json(
+      {
+        id: 5,
+        ...body,
+      },
+      { status: 201 }
+    )
   }),
   http.patch('/api/magasins/:id/', async ({ request, params }) => {
     const body = await request.json()
-    return HttpResponse.json({
-      id: params.id,
-      ...body
-    }, { status: 200 })
+    return HttpResponse.json(
+      {
+        id: params.id,
+        ...body,
+      },
+      { status: 200 }
+    )
   })
 )
 
@@ -37,8 +43,8 @@ const renderForm = (props = {}) => {
   return render(MagasinForm, {
     props,
     global: {
-      plugins: [vuetify]
-    }
+      plugins: [vuetify],
+    },
   })
 }
 
@@ -47,7 +53,7 @@ describe('MagasinForm.vue', () => {
   // champ Vuetify actuel du composant (test desynchronise du composant, a corriger).
   it.skip('affiche le formulaire vide en mode ajout', () => {
     renderForm()
-    
+
     expect(screen.getByText('Ajouter un magasin')).toBeDefined()
     expect(screen.getByPlaceholderText('Saisir le nom du magasin')).toBeDefined()
   })
@@ -55,7 +61,7 @@ describe('MagasinForm.vue', () => {
   it('affiche le formulaire pré-rempli en mode édition', async () => {
     // Dans MagasinForm, la prop s'appelle `magasin` d'après le code vu juste avant
     renderForm({ magasin: { id: 10, nom: 'Magasin Central', estMobile: true } })
-    
+
     expect(screen.getByText('Modifier le magasin')).toBeDefined()
 
     await waitFor(() => {
@@ -67,7 +73,7 @@ describe('MagasinForm.vue', () => {
   })
 
   // Skip : meme cause que ci-dessus (placeholder desynchronise du composant).
-  it.skip('soumet correctement un nouveau magasin via l\'API', async () => {
+  it.skip("soumet correctement un nouveau magasin via l'API", async () => {
     const { emitted } = renderForm()
     const user = userEvent.setup()
 
@@ -115,7 +121,7 @@ describe('MagasinForm.vue', () => {
 
     const nameInput = screen.getByPlaceholderText('Saisir le nom du magasin')
     await user.type(nameInput, 'Invalide')
-    nameInput.blur(); // focus out pour valider si besoin
+    nameInput.blur() // focus out pour valider si besoin
 
     const submitBtn = screen.getByRole('button', { name: /Cr.*er|Enregistrer|Sauvegarder/i })
     await user.click(submitBtn)

@@ -21,52 +21,54 @@
 </template>
 
 <script setup>
-/** Vue de création d'un véhicule (US-002) : charge les référentiels puis délègue à VehiculeForm. */
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import VehiculeForm from '@/components/Forms/VehiculeForm.vue'
-import { useApi } from '@/composables/useApi'
-import { API_BASE_URL } from '@/utils/constants'
+  /** Vue de création d'un véhicule (US-002) : charge les référentiels puis délègue à VehiculeForm. */
+  import { ref, onMounted } from 'vue'
+  import { useRouter } from 'vue-router'
+  import VehiculeForm from '@/components/Forms/VehiculeForm.vue'
+  import { useApi } from '@/composables/useApi'
+  import { API_BASE_URL } from '@/utils/constants'
 
-const router = useRouter()
-const api = useApi(API_BASE_URL)
+  const router = useRouter()
+  const api = useApi(API_BASE_URL)
 
-const lieux = ref([])
-const familles = ref([])
-const fabricants = ref([])
-const fournisseurs = ref([])
-const modeles = ref([])
-const loadingData = ref(true)
+  const lieux = ref([])
+  const familles = ref([])
+  const fabricants = ref([])
+  const fournisseurs = ref([])
+  const modeles = ref([])
+  const loadingData = ref(true)
 
-const loadReferenceData = async () => {
-  loadingData.value = true
-  try {
-    const [lieuxRes, famillesRes, fabricantsRes, fournisseursRes, modelesRes] = await Promise.all([
-      api.get('lieux/'),
-      api.get('famille-equipements/'),
-      api.get('fabricants/'),
-      api.get('fournisseurs/'),
-      api.get('modele-equipements/'),
-    ])
-    lieux.value = lieuxRes
-    familles.value = famillesRes
-    fabricants.value = fabricantsRes
-    fournisseurs.value = fournisseursRes
-    modeles.value = modelesRes
-  } catch (error) {
-    console.error('Erreur lors du chargement des référentiels véhicule :', error)
-  } finally {
-    loadingData.value = false
+  const loadReferenceData = async () => {
+    loadingData.value = true
+    try {
+      const [lieuxRes, famillesRes, fabricantsRes, fournisseursRes, modelesRes] = await Promise.all(
+        [
+          api.get('lieux/'),
+          api.get('famille-equipements/'),
+          api.get('fabricants/'),
+          api.get('fournisseurs/'),
+          api.get('modele-equipements/'),
+        ]
+      )
+      lieux.value = lieuxRes
+      familles.value = famillesRes
+      fabricants.value = fabricantsRes
+      fournisseurs.value = fournisseursRes
+      modeles.value = modelesRes
+    } catch (error) {
+      console.error('Erreur lors du chargement des référentiels véhicule :', error)
+    } finally {
+      loadingData.value = false
+    }
   }
-}
 
-const handleCreated = (newVehicule) => {
-  router.push({ name: 'VehicleDetail', params: { id: newVehicule.id } })
-}
+  const handleCreated = (newVehicule) => {
+    router.push({ name: 'VehicleDetail', params: { id: newVehicule.id } })
+  }
 
-const handleClose = () => {
-  router.push({ name: 'VehicleList' })
-}
+  const handleClose = () => {
+    router.push({ name: 'VehicleList' })
+  }
 
-onMounted(loadReferenceData)
+  onMounted(loadReferenceData)
 </script>

@@ -49,7 +49,6 @@
 // //   };
 // // }
 
-
 // import { ref } from "vue";
 // import api from "@/composables/http";
 
@@ -100,8 +99,8 @@
 //   };
 // }
 
-import { ref } from "vue";
-import api from "@/composables/http";
+import { ref } from 'vue'
+import api from '@/composables/http'
 
 /**
  * Composable pour effectuer des appels à l'API REST du backend.
@@ -135,45 +134,40 @@ import api from "@/composables/http";
  * // donc `getRaw` (réponse Axios entière) plutôt que `get` (qui ne retourne que `.data`).
  * const response = await api.getRaw('export/', { exportType: 'eq' }, { responseType: 'blob' })
  */
-export function useApi(baseURL = null) {
-  const data = ref(null);
-  const loading = ref(false);
-  const error = ref(null);
+export function useApi(_baseURL = null) {
+  const data = ref(null)
+  const loading = ref(false)
+  const error = ref(null)
 
   const request = async (config) => {
-    loading.value = true;
-    error.value = null;
+    loading.value = true
+    error.value = null
     try {
-      const response = await api(config);
-      data.value = response.data;
-      return response.data;
+      const response = await api(config)
+      data.value = response.data
+      return response.data
     } catch (err) {
-      error.value = err.response?.data || err.message;
-      throw err;
+      error.value = err.response?.data || err.message
+      throw err
     } finally {
-      loading.value = false;
+      loading.value = false
     }
-  };
+  }
 
   /** @param {string} url @param {object} [params] */
-  const get = (url, params = {}) =>
-    request({ url, method: "GET", params });
+  const get = (url, params = {}) => request({ url, method: 'GET', params })
 
   /** @param {string} url @param {object} [data] */
-  const post = (url, data = {}) =>
-    request({ url, method: "POST", data });
+  const post = (url, data = {}) => request({ url, method: 'POST', data })
 
   /** @param {string} url @param {object} [data] */
-  const put = (url, data = {}) =>
-    request({ url, method: "PUT", data });
+  const put = (url, data = {}) => request({ url, method: 'PUT', data })
 
   /** @param {string} url @param {object} [data] */
-  const patch = (url, data = {}) =>
-    request({ url, method: "PATCH", data });
+  const patch = (url, data = {}) => request({ url, method: 'PATCH', data })
 
   /** @param {string} url */
-  const remove = (url) =>
-    request({ url, method: "DELETE" });
+  const remove = (url) => request({ url, method: 'DELETE' })
 
   /**
    * Effectue une requête GET et retourne la réponse Axios complète (headers inclus),
@@ -187,19 +181,19 @@ export function useApi(baseURL = null) {
    * @returns {Promise<import('axios').AxiosResponse>}
    */
   const getRaw = async (url, params = {}, extraConfig = {}) => {
-    loading.value = true;
-    error.value = null;
+    loading.value = true
+    error.value = null
     try {
-      const response = await api({ url, method: "GET", params, ...extraConfig });
-      data.value = response.data;
-      return response;
+      const response = await api({ url, method: 'GET', params, ...extraConfig })
+      data.value = response.data
+      return response
     } catch (err) {
-      error.value = err.response?.data || err.message;
-      throw err;
+      error.value = err.response?.data || err.message
+      throw err
     } finally {
-      loading.value = false;
+      loading.value = false
     }
-  };
+  }
 
   return {
     data,
@@ -211,5 +205,5 @@ export function useApi(baseURL = null) {
     patch,
     remove,
     getRaw,
-  };
+  }
 }

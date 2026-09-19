@@ -75,74 +75,74 @@
 </template>
 
 <script setup>
-import { useApi } from '@/composables/useApi'
-import { ref, computed, onMounted } from 'vue'
-import { useStore } from 'vuex'
-import { useRouter, useRoute } from 'vue-router'
-import { API_BASE_URL } from '@/utils/constants'
-import LieuForm from '@/components/Forms/LieuForm.vue'
+  import { useApi } from '@/composables/useApi'
+  import { ref, computed, onMounted } from 'vue'
+  import { useStore } from 'vuex'
+  import { useRouter, useRoute } from 'vue-router'
+  import { API_BASE_URL } from '@/utils/constants'
+  import LieuForm from '@/components/Forms/LieuForm.vue'
 
-const router = useRouter()
-const route = useRoute()
-const store = useStore()
-const api = useApi(API_BASE_URL)
+  const router = useRouter()
+  const route = useRoute()
+  const store = useStore()
+  const api = useApi(API_BASE_URL)
 
-const location = ref(null)
-const loading = ref(false)
-const error = ref('')
-const showEditDialog = ref(false)
-const locations = ref([])
+  const location = ref(null)
+  const loading = ref(false)
+  const error = ref('')
+  const showEditDialog = ref(false)
+  const locations = ref([])
 
-const canEdit = computed(() => store.getters.hasPermission('loc:edit'))
+  const canEdit = computed(() => store.getters.hasPermission('loc:edit'))
 
-const editData = computed(() => {
-  if (!location.value) return {}
-  return {
-    id: location.value.id,
-    nomLieu: location.value.nomLieu || '',
-    typeLieu: location.value.typeLieu || '',
-    lienPlan: location.value.lienPlan || '',
-    lieuParent: location.value.lieuParent?.id || location.value.lieuParent || null,
+  const editData = computed(() => {
+    if (!location.value) return {}
+    return {
+      id: location.value.id,
+      nomLieu: location.value.nomLieu || '',
+      typeLieu: location.value.typeLieu || '',
+      lienPlan: location.value.lienPlan || '',
+      lieuParent: location.value.lieuParent?.id || location.value.lieuParent || null,
+    }
+  })
+
+  const fetchLocation = async () => {
+    loading.value = true
+    error.value = ''
+
+    try {
+      location.value = await api.get(`lieux/${route.params.id}/`)
+    } catch (err) {
+      console.error('Error loading the location:', err)
+      error.value = 'Erreur lors du chargement du lieu'
+    } finally {
+      loading.value = false
+    }
   }
-})
 
-const fetchLocation = async () => {
-  loading.value = true
-  error.value = ''
-
-  try {
-    location.value = await api.get(`lieux/${route.params.id}/`)
-  } catch (err) {
-    console.error('Error loading the location:', err)
-    error.value = 'Erreur lors du chargement du lieu'
-  } finally {
-    loading.value = false
+  const fetchLocations = async () => {
+    try {
+      locations.value = await api.get('lieux/hierarchy/')
+    } catch (err) {
+      console.error('Error loading locations hierarchy:', err)
+    }
   }
-}
 
-const fetchLocations = async () => {
-  try {
-    locations.value = await api.get('lieux/hierarchy/')
-  } catch (err) {
-    console.error('Error loading locations hierarchy:', err)
+  const openEditDialog = () => {
+    showEditDialog.value = true
   }
-}
 
-const openEditDialog = () => {
-  showEditDialog.value = true
-}
+  const onUpdated = async () => {
+    showEditDialog.value = false
+    await fetchLocation()
+  }
 
-const onUpdated = async () => {
-  showEditDialog.value = false
-  await fetchLocation()
-}
+  const goBack = () => {
+    router.back()
+  }
 
-const goBack = () => {
-  router.back()
-}
-
-onMounted(() => {
-  fetchLocation()
-  fetchLocations()
-})
+  onMounted(() => {
+    fetchLocation()
+    fetchLocations()
+  })
 </script>

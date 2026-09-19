@@ -1,7 +1,13 @@
 <template>
-  <BaseDetailView :data="vehicleData" :loading="isLoading" :error-message="errorMessage"
-    title="Détail du véhicule" :auto-display="false" :show-edit-button="false"
-    @clear-error="errorMessage = ''">
+  <BaseDetailView
+    :data="vehicleData"
+    :loading="isLoading"
+    :error-message="errorMessage"
+    title="Détail du véhicule"
+    :auto-display="false"
+    :show-edit-button="false"
+    @clear-error="errorMessage = ''"
+  >
     <template #default="{ data }">
       <v-row v-if="data" dense>
         <v-col cols="12">
@@ -31,7 +37,12 @@
         <v-col cols="12" md="6">
           <strong>Statut</strong>
           <div>
-            <v-chip v-if="data.statut" variant="outlined" size="small" :color="getStatusColor(data.statut.statut)">
+            <v-chip
+              v-if="data.statut"
+              variant="outlined"
+              size="small"
+              :color="getStatusColor(data.statut.statut)"
+            >
               {{ getStatusLabel(data.statut.statut) }}
             </v-chip>
             <span v-else>-</span>
@@ -54,17 +65,27 @@
 
         <v-col cols="12" md="4">
           <strong>CO2</strong>
-          <div>{{ data.vehicule_profile?.co2 != null ? `${data.vehicule_profile.co2} g/km` : '-' }}</div>
+          <div>
+            {{ data.vehicule_profile?.co2 != null ? `${data.vehicule_profile.co2} g/km` : '-' }}
+          </div>
         </v-col>
 
         <v-col cols="12" md="4">
           <strong>Puissance fiscale</strong>
-          <div>{{ data.vehicule_profile?.puissanceFiscale != null ? `${data.vehicule_profile.puissanceFiscale} CV` : '-' }}</div>
+          <div>
+            {{
+              data.vehicule_profile?.puissanceFiscale != null
+                ? `${data.vehicule_profile.puissanceFiscale} CV`
+                : '-'
+            }}
+          </div>
         </v-col>
 
         <v-col cols="12" md="4">
           <strong>PTAC</strong>
-          <div>{{ data.vehicule_profile?.ptac != null ? `${data.vehicule_profile.ptac} kg` : '-' }}</div>
+          <div>
+            {{ data.vehicule_profile?.ptac != null ? `${data.vehicule_profile.ptac} kg` : '-' }}
+          </div>
         </v-col>
 
         <v-col cols="12" class="mt-4">
@@ -107,67 +128,69 @@
 </template>
 
 <script setup>
-/** Fiche détail d'un véhicule (US-003), lecture seule + accès à l'édition. */
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useStore } from 'vuex'
-import BaseDetailView from '@/components/common/BaseDetailView.vue'
-import { useApi } from '@/composables/useApi'
-import { API_BASE_URL } from '@/utils/constants'
-import { getStatusColor, getStatusLabel } from '@/utils/helpers'
+  /** Fiche détail d'un véhicule (US-003), lecture seule + accès à l'édition. */
+  import { computed, onMounted, ref } from 'vue'
+  import { useRoute, useRouter } from 'vue-router'
+  import { useStore } from 'vuex'
+  import BaseDetailView from '@/components/common/BaseDetailView.vue'
+  import { useApi } from '@/composables/useApi'
+  import { API_BASE_URL } from '@/utils/constants'
+  import { getStatusColor, getStatusLabel } from '@/utils/helpers'
 
-const GENRE_LABELS = {
-  VL: 'Véhicule léger',
-  PL: 'Poids lourd',
-  UTILITAIRE: 'Utilitaire',
-  REMORQUE: 'Remorque',
-}
-
-const ENERGIE_LABELS = {
-  ESSENCE: 'Essence',
-  DIESEL: 'Diesel',
-  ELECTRIQUE: 'Électrique',
-  HYBRIDE: 'Hybride',
-  GPL: 'GPL',
-  AUTRE: 'Autre',
-}
-
-const route = useRoute()
-const router = useRouter()
-const store = useStore()
-const api = useApi(API_BASE_URL)
-
-const vehicleId = route.params.id
-const vehicleData = ref(null)
-const isLoading = ref(true)
-const errorMessage = ref('')
-
-const genreLabel = computed(() => GENRE_LABELS[vehicleData.value?.vehicule_profile?.genre] || '-')
-const energieLabel = computed(() => ENERGIE_LABELS[vehicleData.value?.vehicule_profile?.energie] || '-')
-
-const loadVehicleData = async () => {
-  isLoading.value = true
-  try {
-    vehicleData.value = await api.get(`vehicules/${vehicleId}/`)
-  } catch (error) {
-    errorMessage.value = 'Erreur lors du chargement du véhicule.'
-  } finally {
-    isLoading.value = false
+  const GENRE_LABELS = {
+    VL: 'Véhicule léger',
+    PL: 'Poids lourd',
+    UTILITAIRE: 'Utilitaire',
+    REMORQUE: 'Remorque',
   }
-}
 
-const editVehicle = () => {
-  router.push({ name: 'EditVehicle', params: { id: vehicleId } })
-}
+  const ENERGIE_LABELS = {
+    ESSENCE: 'Essence',
+    DIESEL: 'Diesel',
+    ELECTRIQUE: 'Électrique',
+    HYBRIDE: 'Hybride',
+    GPL: 'GPL',
+    AUTRE: 'Autre',
+  }
 
-onMounted(loadVehicleData)
+  const route = useRoute()
+  const router = useRouter()
+  const store = useStore()
+  const api = useApi(API_BASE_URL)
+
+  const vehicleId = route.params.id
+  const vehicleData = ref(null)
+  const isLoading = ref(true)
+  const errorMessage = ref('')
+
+  const genreLabel = computed(() => GENRE_LABELS[vehicleData.value?.vehicule_profile?.genre] || '-')
+  const energieLabel = computed(
+    () => ENERGIE_LABELS[vehicleData.value?.vehicule_profile?.energie] || '-'
+  )
+
+  const loadVehicleData = async () => {
+    isLoading.value = true
+    try {
+      vehicleData.value = await api.get(`vehicules/${vehicleId}/`)
+    } catch {
+      errorMessage.value = 'Erreur lors du chargement du véhicule.'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const editVehicle = () => {
+    router.push({ name: 'EditVehicle', params: { id: vehicleId } })
+  }
+
+  onMounted(loadVehicleData)
 </script>
 
 <style scoped>
-.floating-edit-button {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 1000;
-}
+  .floating-edit-button {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+  }
 </style>

@@ -26,8 +26,8 @@ const vuetify = createVuetify({ components, directives })
 // les boutons d'import Excel (voir EquipmentListComponent.vue).
 const store = createStore({
   getters: {
-    hasPermission: () => () => true
-  }
+    hasPermission: () => () => true,
+  },
 })
 
 // Initialisation de MSW (Mock Service Worker)
@@ -37,21 +37,37 @@ const server = setupServer(
   http.get(`${API_BASE_URL}equipements/`, ({ request }) => {
     const url = new URL(request.url)
     const search = url.searchParams.get('search')
-    
+
     let mockData = [
-      { id: 1, reference: 'EQ-001', designation: 'Pompe A1', lieu: { nomLieu: 'Atelier' }, modele: 'Mod A', statut: { statut: 'EN_FONCTIONNEMENT' } },
-      { id: 2, reference: 'EQ-002', designation: 'Compresseur', lieu: { nomLieu: 'Usine' }, modele: 'Mod B', statut: { statut: 'HORS_SERVICE' } },
+      {
+        id: 1,
+        reference: 'EQ-001',
+        designation: 'Pompe A1',
+        lieu: { nomLieu: 'Atelier' },
+        modele: 'Mod A',
+        statut: { statut: 'EN_FONCTIONNEMENT' },
+      },
+      {
+        id: 2,
+        reference: 'EQ-002',
+        designation: 'Compresseur',
+        lieu: { nomLieu: 'Usine' },
+        modele: 'Mod B',
+        statut: { statut: 'HORS_SERVICE' },
+      },
     ]
-    
+
     // Simule la recherche serveur
     if (search) {
-      mockData = mockData.filter(eq => eq.designation.toLowerCase().includes(search.toLowerCase()))
+      mockData = mockData.filter((eq) =>
+        eq.designation.toLowerCase().includes(search.toLowerCase())
+      )
     }
-    
+
     // Le composant gère une pagination serveur, donc on renvoie un objet count/results
     return HttpResponse.json({ count: mockData.length, results: mockData })
   }),
-  
+
   // Mocks des data annexes appelées dans fetchSupportData()
   http.get(`${API_BASE_URL}lieux/hierarchy/`, () => HttpResponse.json([])),
   http.get(`${API_BASE_URL}modele-equipements/`, () => HttpResponse.json([]))
@@ -67,11 +83,11 @@ const renderComponent = (props = {}) => {
   return render(EquipmentListComponent, {
     props: {
       serverPagination: true, // par défaut
-      ...props
+      ...props,
     },
     global: {
-      plugins: [vuetify, store]
-    }
+      plugins: [vuetify, store],
+    },
   })
 }
 
@@ -80,8 +96,7 @@ const renderComponent = (props = {}) => {
 // ============================================================================
 
 describe('EquipmentListComponent', () => {
-
-  it("doit afficher la liste des équipements après le chargement initial", async () => {
+  it('doit afficher la liste des équipements après le chargement initial', async () => {
     // -----------------------------------------------------------------
     // GIVEN (Étant donné...)
     // -----------------------------------------------------------------
@@ -103,7 +118,7 @@ describe('EquipmentListComponent', () => {
       expect(screen.getByText('Pompe A1')).toBeDefined()
       expect(screen.getByText('Compresseur')).toBeDefined()
     })
-    
+
     // Note: Le composant utilise le helper "getStatusLabel". S'il gère les traductions
     // de statut EN_FONCTIONNEMENT -> "En fonctionnement", Testing Library verra le texte traduit.
     // Cela garantit qu'on teste le "vrai" code affiché !
@@ -120,24 +135,27 @@ describe('EquipmentListComponent', () => {
     // WHEN: L'utilisateur tape du texte dans le champ de recherche Vuetify de l'enfant BaseListView
     // userEvent est essentiel car il simule de bout en bout l'événement clavier
     const user = userEvent.setup()
-    
+
     // Remarque: la `BaseListView` a sûrement un input textuel. S'il n'a pas de nom explicite,
     // on vise souvent la class vuetify ou le label. Adaptes ce sélecteur à ton code.
     // Imaginons que "show-search" affiche un champ avec pour label ou placeholder "Rechercher"
-    const searchInput = screen.getByLabelText('Rechercher') 
+    const searchInput = screen.getByLabelText('Rechercher')
     await user.type(searchInput, 'Compresseur')
 
     // On déclenche la recherche (le debounce défini dans let searchDebounceId = null prendra le relais)
 
     // THEN: L'API devrait être appelée avec '?search=Compresseur'
     // La Pompe disparaît, le compresseur reste.
-    await waitFor(() => {
-      expect(screen.getByText('Compresseur')).toBeDefined()
-      expect(screen.queryByText('Pompe A1')).toBeNull() 
-    }, { timeout: 1200 })
+    await waitFor(
+      () => {
+        expect(screen.getByText('Compresseur')).toBeDefined()
+        expect(screen.queryByText('Pompe A1')).toBeNull()
+      },
+      { timeout: 1200 }
+    )
   })
 
-  it("doit afficher un message explicite en cas de défaillance réseau", async () => {
+  it('doit afficher un message explicite en cas de défaillance réseau', async () => {
     // GIVEN: L'API est injoignable (Génération d'une fausse erreur serveur)
     server.use(
       http.get(`${API_BASE_URL}equipements/`, () => {

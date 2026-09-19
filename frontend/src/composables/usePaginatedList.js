@@ -1,18 +1,18 @@
-import { computed, onBeforeUnmount, ref, unref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, unref, watch } from 'vue'
 
-const PAGINATION_KEYS = new Set(['count', 'next', 'previous', 'results']);
+const PAGINATION_KEYS = new Set(['count', 'next', 'previous', 'results'])
 
 const toSearchValue = (value) => {
   if (typeof value === 'string') {
-    return value;
+    return value
   }
 
   if (value && typeof value === 'object' && typeof value.target?.value === 'string') {
-    return value.target.value;
+    return value.target.value
   }
 
-  return '';
-};
+  return ''
+}
 
 const normalizeResponse = (response) => {
   if (Array.isArray(response)) {
@@ -22,16 +22,16 @@ const normalizeResponse = (response) => {
       items: response,
       totalItems: response.length,
       extra: {},
-    };
+    }
   }
 
-  const items = Array.isArray(response?.results) ? response.results : [];
-  const extra = {};
+  const items = Array.isArray(response?.results) ? response.results : []
+  const extra = {}
 
   if (response && typeof response === 'object') {
     for (const [key, value] of Object.entries(response)) {
       if (!PAGINATION_KEYS.has(key)) {
-        extra[key] = value;
+        extra[key] = value
       }
     }
   }
@@ -40,8 +40,8 @@ const normalizeResponse = (response) => {
     items,
     totalItems: Number(response?.count || 0),
     extra,
-  };
-};
+  }
+}
 
 /**
  * Composable générique pour gérer une liste paginée côté serveur.
@@ -98,34 +98,34 @@ export function usePaginatedList({
   enabled = true,
   onFetched = null,
 }) {
-  const items = ref([]);
-  const currentPage = ref(1);
-  const pageSize = ref(initialPageSize);
-  const searchQuery = ref('');
-  const totalItems = ref(0);
-  const extra = ref({});
-  const errorMessage = ref('');
+  const items = ref([])
+  const currentPage = ref(1)
+  const pageSize = ref(initialPageSize)
+  const searchQuery = ref('')
+  const totalItems = ref(0)
+  const extra = ref({})
+  const errorMessage = ref('')
 
-  let searchTimeoutId = null;
+  let searchTimeoutId = null
 
-  const loading = computed(() => api.loading.value);
+  const loading = computed(() => api.loading.value)
   const totalPages = computed(() => {
-    if (pageSize.value <= 0) return 1;
-    return Math.max(1, Math.ceil(totalItems.value / pageSize.value));
-  });
+    if (pageSize.value <= 0) return 1
+    return Math.max(1, Math.ceil(totalItems.value / pageSize.value))
+  })
 
-  const resolveEndpoint = () => (typeof endpoint === 'function' ? endpoint() : unref(endpoint));
-  const resolveEnabled = () => (typeof enabled === 'function' ? enabled() : unref(enabled));
+  const resolveEndpoint = () => (typeof endpoint === 'function' ? endpoint() : unref(endpoint))
+  const resolveEnabled = () => (typeof enabled === 'function' ? enabled() : unref(enabled))
 
   const fetchPage = async () => {
     if (!resolveEnabled()) {
-      items.value = [];
-      totalItems.value = 0;
-      extra.value = {};
-      return [];
+      items.value = []
+      totalItems.value = 0
+      extra.value = {}
+      return []
     }
 
-    errorMessage.value = '';
+    errorMessage.value = ''
 
     try {
       const params = {
@@ -136,77 +136,74 @@ export function usePaginatedList({
           pageSize: pageSize.value,
           searchQuery: searchQuery.value.trim(),
         }),
-      };
+      }
 
       // Si le composant ne fournit pas de mapping custom pour la recherche,
       // on injecte le parametre DRF standard une seule fois ici.
       if (!params.search && searchQuery.value.trim()) {
-        params.search = searchQuery.value.trim();
+        params.search = searchQuery.value.trim()
       }
 
-      const response = await api.get(resolveEndpoint(), params);
-      const normalized = normalizeResponse(response);
+      const response = await api.get(resolveEndpoint(), params)
+      const normalized = normalizeResponse(response)
 
-      items.value = normalized.items;
-      totalItems.value = normalized.totalItems;
-      extra.value = normalized.extra;
+      items.value = normalized.items
+      totalItems.value = normalized.totalItems
+      extra.value = normalized.extra
 
       if (typeof onFetched === 'function') {
-        onFetched(response, normalized);
+        onFetched(response, normalized)
       }
 
-      return normalized.items;
+      return normalized.items
     } catch (error) {
-      errorMessage.value = error?.response?.data?.error || 'Erreur lors du chargement des données';
-      throw error;
+      errorMessage.value = error?.response?.data?.error || 'Erreur lors du chargement des données'
+      throw error
     }
-  };
+  }
 
   const resetToFirstPageAndFetch = async () => {
     if (currentPage.value !== 1) {
       // Le watcher sur currentPage declenche deja fetchPage ; on evite
       // donc un deuxieme appel reseau quand on force simplement le retour page 1.
-      currentPage.value = 1;
-      return;
+      currentPage.value = 1
+      return
     }
 
-    await fetchPage();
-  };
+    await fetchPage()
+  }
 
   const handleSearch = (value) => {
-    searchQuery.value = toSearchValue(value);
+    searchQuery.value = toSearchValue(value)
 
     if (searchTimeoutId) {
-      clearTimeout(searchTimeoutId);
+      clearTimeout(searchTimeoutId)
     }
 
     searchTimeoutId = setTimeout(() => {
-      resetToFirstPageAndFetch().catch(() => {});
-    }, debounceMs);
-  };
+      resetToFirstPageAndFetch().catch(() => {})
+    }, debounceMs)
+  }
 
   watch(currentPage, () => {
-    fetchPage().catch(() => {});
-  });
+    fetchPage().catch(() => {})
+  })
 
   watch(pageSize, () => {
-    resetToFirstPageAndFetch().catch(() => {});
-  });
+    resetToFirstPageAndFetch().catch(() => {})
+  })
 
   if (watchSource) {
-    watch(
-      watchSource,
-      () => {
-        resetToFirstPageAndFetch().catch(() => {});
-      },
-    );
+    watch(watchSource, () => {
+      resetToFirstPageAndFetch().catch(() => {})
+    })
   }
 
   onBeforeUnmount(() => {
     if (searchTimeoutId) {
-      clearTimeout(searchTimeoutId);
+      clearTimeout(searchTimeoutId)
     }
-  });
+  })
 
   return {
     items,
@@ -221,5 +218,5 @@ export function usePaginatedList({
     fetchPage,
     handleSearch,
     resetToFirstPageAndFetch,
-  };
+  }
 }

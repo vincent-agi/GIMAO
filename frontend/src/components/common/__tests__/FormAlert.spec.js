@@ -13,16 +13,16 @@ const renderComponent = (props = {}) => {
   return render(FormAlert, {
     props,
     global: {
-      plugins: [vuetify]
-    }
+      plugins: [vuetify],
+    },
   })
 }
 
 describe('FormAlert.vue', () => {
-  it('ne s\'affiche pas si le message est vide', () => {
+  it("ne s'affiche pas si le message est vide", () => {
     // GIVEN un composant avec message vide (comportement par défaut)
     renderComponent({ message: '' })
-    
+
     // THEN l'alerte n'existe pas dans le DOM
     expect(screen.queryByRole('alert')).toBeNull()
   })
@@ -30,18 +30,18 @@ describe('FormAlert.vue', () => {
   it('affiche le message passé en props', () => {
     // GIVEN un composant avec un message spécifique
     renderComponent({ message: 'Identifiants invalides' })
-    
+
     // THEN le message est visible
     expect(screen.getByText('Identifiants invalides')).toBeDefined()
   })
 
   it('affiche un bouton de fermeture si dismissible est true', async () => {
     // GIVEN une alerte dismissible
-    const { emitted } = renderComponent({ 
-      message: 'Erreur', 
-      dismissible: true 
+    const { emitted } = renderComponent({
+      message: 'Erreur',
+      dismissible: true,
     })
-    
+
     // On trouve le bouton de fermeture (Vuetify met souvent aria-label="Close")
     const closeButton = screen.getByRole('button', { name: /Close|Fermer/i })
     expect(closeButton).toBeDefined()

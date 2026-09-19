@@ -2,7 +2,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/vue'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { describe, it, expect, beforeAll, afterEach, afterAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest'
 import { createStore } from 'vuex'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
@@ -29,9 +29,9 @@ const server = setupServer(
     lastPutBody = await request.json()
     return HttpResponse.json(
       { id: Number(params.id), vehicule_profile: { immatriculation: 'AB-123-CD' } },
-      { status: 200 },
+      { status: 200 }
     )
-  }),
+  })
 )
 
 beforeAll(() => server.listen())

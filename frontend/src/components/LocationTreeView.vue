@@ -12,21 +12,28 @@
       </v-col>
     </v-row>
 
-    <p v-if="!items || items.length === 0" class="text-caption">
-      Pas de données disponibles.
-    </p>
+    <p v-if="!items || items.length === 0" class="text-caption">Pas de données disponibles.</p>
 
-    <VTreeview v-else :items="processedItems" item-value="id" item-title="nomLieu" v-model:opened="openNodes" activatable hoverable
-      rounded density="compact">
+    <VTreeview
+      v-else
+      v-model:opened="openNodes"
+      :items="processedItems"
+      item-value="id"
+      item-title="nomLieu"
+      activatable
+      hoverable
+      rounded
+      density="compact"
+    >
       <!-- Checkbox après la flèche par défaut -->
       <template #prepend="{ item }">
-        <v-checkbox 
-          :model-value="isSelected(item)" 
-          @update:model-value="() => onSelect(item)" 
+        <v-checkbox
+          :model-value="isSelected(item)"
           density="compact"
-          hide-details 
+          hide-details
           :disabled="isLocked && !isSelected(item)"
           :style="{ marginLeft: !item.children ? '28px' : '0' }"
+          @update:model-value="() => onSelect(item)"
         />
       </template>
 
@@ -58,169 +65,170 @@
           <v-icon size="18">mdi-plus</v-icon>
         </v-btn>
       </template>
-
     </VTreeview>
 
     <!-- Chip avec le lieu -->
-    <v-chip v-if="selected" color="primary" class="mt-2" closable @click:close="emit('update:selected', null)">
+    <v-chip
+      v-if="selected"
+      color="primary"
+      class="mt-2"
+      closable
+      @click:close="emit('update:selected', null)"
+    >
       Lieu sélectionné : {{ selectedName }}
     </v-chip>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
-import { VTreeview } from 'vuetify/labs/components'
+  import { computed, ref, watch } from 'vue'
+  import { VTreeview } from 'vuetify/labs/components'
 
-const props = defineProps({
-  items: Array,
-  selected: [Object, Number, String],
-  lockSelection: { type: Boolean, default: false },
-  showTitle: { type: Boolean, default: true },
-  showCreateButton: { type: Boolean, default: false },
-  showEditButton: { type: Boolean, default: false },
-});
+  const props = defineProps({
+    items: { type: Array, default: () => [] },
+    selected: { type: [Object, Number, String], default: null },
+    lockSelection: { type: Boolean, default: false },
+    showTitle: { type: Boolean, default: true },
+    showCreateButton: { type: Boolean, default: false },
+    showEditButton: { type: Boolean, default: false },
+  })
 
-const emit = defineEmits(["update:selected", "create", "edit"]);
+  const emit = defineEmits(['update:selected', 'create', 'edit'])
 
-const onEdit = (item) => emit("edit", item);
+  const onEdit = (item) => emit('edit', item)
 
-const cleanItems = (nodes) => {
-  if (!nodes) return [];
-  return nodes.map(node => {
-    const newNode = { ...node };
-    if (newNode.children && newNode.children.length > 0) {
-      newNode.children = cleanItems(newNode.children);
-    } else {
-      delete newNode.children;
-    }
-    return newNode;
-  });
-};
-
-const processedItems = computed(() => cleanItems(props.items));
-
-const openNodes = ref([]);
-
-// Retrieve path to a node to expand the tree
-const getPathToNode = (nodes, targetId, currentPath = []) => {
-  if (!nodes) return null;
-  for (const node of nodes) {
-    if (node.id == targetId) {
-      return currentPath;
-    }
-    if (node.children && node.children.length > 0) {
-      const result = getPathToNode(node.children, targetId, [...currentPath, node.id]);
-      if (result) return result;
-    }
+  const cleanItems = (nodes) => {
+    if (!nodes) return []
+    return nodes.map((node) => {
+      const newNode = { ...node }
+      if (newNode.children && newNode.children.length > 0) {
+        newNode.children = cleanItems(newNode.children)
+      } else {
+        delete newNode.children
+      }
+      return newNode
+    })
   }
-  return null;
-};
 
-// Watch selected to expand tree
-watch(
-  [() => props.selected, () => props.items],
-  () => {
-    if (!props.selected || !props.items) return;
+  const processedItems = computed(() => cleanItems(props.items))
 
-    const targetId = typeof props.selected === 'object' ? props.selected.id : props.selected;
-    console.log("LocationTreeView: targetId for expansion:", targetId);
-    
-    if (!targetId) return;
+  const openNodes = ref([])
 
-    const path = getPathToNode(props.items, targetId);
-    console.log("LocationTreeView: found path:", path);
-    
-    if (path) {
-      // Add path ids to openNodes if not already present
-      const newOpen = new Set([...openNodes.value, ...path]);
-      openNodes.value = Array.from(newOpen);
-      console.log("LocationTreeView: new openNodes:", openNodes.value);
+  // Retrieve path to a node to expand the tree
+  const getPathToNode = (nodes, targetId, currentPath = []) => {
+    if (!nodes) return null
+    for (const node of nodes) {
+      if (node.id == targetId) {
+        return currentPath
+      }
+      if (node.children && node.children.length > 0) {
+        const result = getPathToNode(node.children, targetId, [...currentPath, node.id])
+        if (result) return result
+      }
     }
-  },
-  { immediate: true, deep: true }
-);
-
-// Détecte si sélection bloquée
-const isLocked = computed(() => props.lockSelection && props.selected !== null);
-
-// Détecte si un item est celui sélectionné
-const isSelected = (item) => {
-  if (!props.selected) return false;
-  const selectedId = typeof props.selected === 'object' ? props.selected.id : props.selected;
-  return selectedId == item.id;
-};
-
-// Sélection via checkbox
-const onSelect = (item) => {
-  if (isLocked.value && !isSelected(item)) return; // sélection bloquée
-
-  emit("update:selected", isSelected(item) ? null : item);
-};
-
-// Transmission de l’événement de création
-const onCreate = (item) => {
-  console.log("Create location under parent:", item); // Debug
-  emit("create", item.id);
-};
-
-const createWithoutParent = () => {
-  emit("create", null);
-};
-
-const findNodeById = (nodes, id) => {
-  if (!nodes) return null;
-  for (const node of nodes) {
-    if (node.id == id) return node;
-    if (node.children && node.children.length > 0) {
-      const found = findNodeById(node.children, id);
-      if (found) return found;
-    }
+    return null
   }
-  return null;
-};
 
-const selectedName = computed(() => {
-  if (!props.selected) return '';
-  if (typeof props.selected === 'object') return props.selected.nomLieu;
+  // Watch selected to expand tree
+  watch(
+    [() => props.selected, () => props.items],
+    () => {
+      if (!props.selected || !props.items) return
 
-  const found = findNodeById(props.items, props.selected);
-  return found ? found.nomLieu : props.selected;
-});
+      const targetId = typeof props.selected === 'object' ? props.selected.id : props.selected
+      console.log('LocationTreeView: targetId for expansion:', targetId)
 
+      if (!targetId) return
+
+      const path = getPathToNode(props.items, targetId)
+      console.log('LocationTreeView: found path:', path)
+
+      if (path) {
+        // Add path ids to openNodes if not already present
+        const newOpen = new Set([...openNodes.value, ...path])
+        openNodes.value = Array.from(newOpen)
+        console.log('LocationTreeView: new openNodes:', openNodes.value)
+      }
+    },
+    { immediate: true, deep: true }
+  )
+
+  // Détecte si sélection bloquée
+  const isLocked = computed(() => props.lockSelection && props.selected !== null)
+
+  // Détecte si un item est celui sélectionné
+  const isSelected = (item) => {
+    if (!props.selected) return false
+    const selectedId = typeof props.selected === 'object' ? props.selected.id : props.selected
+    return selectedId == item.id
+  }
+
+  // Sélection via checkbox
+  const onSelect = (item) => {
+    if (isLocked.value && !isSelected(item)) return // sélection bloquée
+
+    emit('update:selected', isSelected(item) ? null : item)
+  }
+
+  // Transmission de l’événement de création
+  const onCreate = (item) => {
+    console.log('Create location under parent:', item) // Debug
+    emit('create', item.id)
+  }
+
+  const createWithoutParent = () => {
+    emit('create', null)
+  }
+
+  const findNodeById = (nodes, id) => {
+    if (!nodes) return null
+    for (const node of nodes) {
+      if (node.id == id) return node
+      if (node.children && node.children.length > 0) {
+        const found = findNodeById(node.children, id)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  const selectedName = computed(() => {
+    if (!props.selected) return ''
+    if (typeof props.selected === 'object') return props.selected.nomLieu
+
+    const found = findNodeById(props.items, props.selected)
+    return found ? found.nomLieu : props.selected
+  })
 </script>
 
-
 <style scoped>
+  /* S'assurer que tout est sur une seule ligne avec le bon espacement */
+  :deep(.v-treeview-item__content) {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
 
-/* S'assurer que tout est sur une seule ligne avec le bon espacement */
-:deep(.v-treeview-item__content) {
-  display: flex !important;
-  align-items: center !important;
-  width: 100% !important;
-  gap: 8px !important;
-}
+  :deep(.v-treeview-item__prepend) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
 
-:deep(.v-treeview-item__prepend) {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
+  :deep(.v-treeview-item__label) {
+    flex: 1 !important;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
 
-:deep(.v-treeview-item__label) {
-  flex: 1 !important;
-  display: flex;
-  align-items: center;
-  min-width: 0;
-}
-
-:deep(.v-treeview-item__append) {
-  margin-left: auto !important;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  padding-left: 24px !important;
-}
+  :deep(.v-treeview-item__append) {
+    margin-left: auto !important;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding-left: 24px !important;
+  }
 </style>
-

@@ -13,16 +13,16 @@ const renderComponent = (props = {}) => {
   return render(FloatingCreateButton, {
     props,
     global: {
-      plugins: [vuetify]
-    }
+      plugins: [vuetify],
+    },
   })
 }
 
 describe('FloatingCreateButton.vue', () => {
-  it('s\'affiche par défaut quand visible est true', () => {
+  it("s'affiche par défaut quand visible est true", () => {
     // GIVEN le composant rendu par défaut
     renderComponent()
-    
+
     // THEN le bouton doit être présent (par défaut une icône ou un bouton)
     const button = screen.getByRole('button')
     expect(button).not.toBeNull()
@@ -31,17 +31,17 @@ describe('FloatingCreateButton.vue', () => {
   it('ne se rend pas dans le DOM si visible est false', () => {
     // GIVEN le composant monté avec visible: false
     renderComponent({ visible: false })
-    
+
     // THEN aucun bouton n'est trouvé
     const button = screen.queryByRole('button')
     expect(button).toBeNull()
   })
 
-  it('émet l\'événement click quand l\'utilisateur interagit', async () => {
+  it("émet l'événement click quand l'utilisateur interagit", async () => {
     // GIVEN le bouton bien visible
     const { emitted } = renderComponent()
     const user = userEvent.setup()
-    
+
     // WHEN on clique sur le bouton
     const button = screen.getByRole('button')
     await user.click(button)

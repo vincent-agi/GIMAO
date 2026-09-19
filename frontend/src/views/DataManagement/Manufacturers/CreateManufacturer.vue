@@ -10,19 +10,19 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
-import FabricantForm from '@/components/Forms/FabricantForm.vue'
+  import { useRouter } from 'vue-router'
+  import FabricantForm from '@/components/Forms/FabricantForm.vue'
 
-const router = useRouter()
+  const router = useRouter()
 
-const handleCreated = (newFabricant) => {
-  router.push({
-    name: 'ManufacturerDetail',
-    params: { id: newFabricant.id }
-  })
-}
+  const handleCreated = (newFabricant) => {
+    router.push({
+      name: 'ManufacturerDetail',
+      params: { id: newFabricant.id },
+    })
+  }
 
-const handleClose = () => {
-  router.back()
-}
+  const handleClose = () => {
+    router.back()
+  }
 </script>

@@ -2,9 +2,13 @@
   <div class="py-2">
     <!-- Intro -->
     <div class="text-body-2 mb-4">
-      En tant que technicien, vous réalisez les interventions sur les équipements. Vous pouvez signaler des pannes, gérer vos bons de travail et consulter les équipements et les stocks.
+      En tant que technicien, vous réalisez les interventions sur les équipements. Vous pouvez
+      signaler des pannes, gérer vos bons de travail et consulter les équipements et les stocks.
       <br /><br />
-      L'application distingue deux profils de technicien : le <strong>Technicien prod</strong>, qui traite les bons de travail qui lui sont assignés, et le <strong>Technicien maintenance</strong>, qui dispose en plus de l'accès au calendrier des maintenances et à la création des plans de maintenance préventive.
+      L'application distingue deux profils de technicien : le <strong>Technicien prod</strong>, qui
+      traite les bons de travail qui lui sont assignés, et le
+      <strong>Technicien maintenance</strong>, qui dispose en plus de l'accès au calendrier des
+      maintenances et à la création des plans de maintenance préventive.
     </div>
 
     <!-- Sélecteur de sous-profil -->
@@ -25,7 +29,7 @@
 
     <v-window v-model="tab">
       <v-window-item value="connexion">
-        <ConnexionTab :hasMenu="true" role="technicien" />
+        <ConnexionTab :has-menu="true" role="technicien" />
       </v-window-item>
 
       <v-window-item value="dashboard">
@@ -52,15 +56,15 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+  import { ref } from 'vue'
 
-import DashboardTab from "./Dashboard/DashboardTab.vue";
-import DIGeneralTab from "./DI/DIGeneralTab.vue";
-import EquipementsTab from "./Equipments/EquipementsTab.vue";
-import ConnexionTab from "./Auth/ConnexionTab.vue";
-import BTGeneralTab from "./BT/BTGeneralTab.vue";
-import StockGeneralTab from "./Stock/StockGeneralTab.vue";
+  import DashboardTab from './Dashboard/DashboardTab.vue'
+  import DIGeneralTab from './DI/DIGeneralTab.vue'
+  import EquipementsTab from './Equipments/EquipementsTab.vue'
+  import ConnexionTab from './Auth/ConnexionTab.vue'
+  import BTGeneralTab from './BT/BTGeneralTab.vue'
+  import StockGeneralTab from './Stock/StockGeneralTab.vue'
 
-const subRole = ref("Technicien prod");
-const tab = ref("dashboard");
+  const subRole = ref('Technicien prod')
+  const tab = ref('dashboard')
 </script>

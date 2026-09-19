@@ -35,9 +35,7 @@ const vehicule = {
   },
 }
 
-const server = setupServer(
-  http.get('/api/vehicules/10/', () => HttpResponse.json(vehicule)),
-)
+const server = setupServer(http.get('/api/vehicules/10/', () => HttpResponse.json(vehicule)))
 
 const renderWithPermission = (hasPermission = true) => {
   const store = createStore({

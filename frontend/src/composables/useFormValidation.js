@@ -3,13 +3,13 @@
  * Supporte les formulaires simples et multi-steps
  */
 
-import { ref, computed } from 'vue';
-import { useValidationRules } from './useValidationRules';
+import { ref, computed } from 'vue'
+import { useValidationRules } from './useValidationRules'
 
 export function useFormValidation(schema, options = {}) {
-  const rules = useValidationRules();
-  const errors = ref({});
-  const currentStep = ref(options.initialStep || 1);
+  const rules = useValidationRules()
+  const errors = ref({})
+  const currentStep = ref(options.initialStep || 1)
 
   /**
    * Construit les règles Vuetify pour un champ donné
@@ -18,86 +18,86 @@ export function useFormValidation(schema, options = {}) {
    * @returns {Array} - Tableau de règles Vuetify
    */
   const getFieldRules = (fieldName, step = null) => {
-    let fieldSchema;
+    let fieldSchema
 
     if (step !== null && schema[`step${step}`]) {
       // Formulaire multi-steps
-      fieldSchema = schema[`step${step}`]?.[fieldName];
+      fieldSchema = schema[`step${step}`]?.[fieldName]
     } else {
       // Formulaire simple
-      fieldSchema = schema[fieldName];
+      fieldSchema = schema[fieldName]
     }
 
-    if (!fieldSchema) return [];
+    if (!fieldSchema) return []
 
-    const fieldRules = [];
+    const fieldRules = []
 
     // Si le schéma est un tableau de noms de règles
     if (Array.isArray(fieldSchema)) {
-      fieldSchema.forEach(rule => {
+      fieldSchema.forEach((rule) => {
         if (typeof rule === 'string') {
           // Règle simple : 'required', 'email', etc.
           if (rules[rule]) {
-            fieldRules.push(rules[rule]());
+            fieldRules.push(rules[rule]())
           }
         } else if (typeof rule === 'object') {
           // Règle avec paramètres : { name: 'minLength', params: [3] }
-          const ruleName = rule.name;
-          const params = rule.params || [];
-          const message = rule.message;
+          const ruleName = rule.name
+          const params = rule.params || []
+          const message = rule.message
 
           if (rules[ruleName]) {
-            fieldRules.push(rules[ruleName](...params, message));
+            fieldRules.push(rules[ruleName](...params, message))
           }
         } else if (typeof rule === 'function') {
           // Règle personnalisée
-          fieldRules.push(rule);
+          fieldRules.push(rule)
         }
-      });
-    } 
+      })
+    }
     // Si le schéma est un objet avec propriétés
     else if (typeof fieldSchema === 'object') {
       Object.entries(fieldSchema).forEach(([ruleName, ruleConfig]) => {
         if (ruleName === 'required' && ruleConfig) {
-          const message = typeof ruleConfig === 'string' ? ruleConfig : undefined;
-          fieldRules.push(rules.required(message));
+          const message = typeof ruleConfig === 'string' ? ruleConfig : undefined
+          fieldRules.push(rules.required(message))
         } else if (ruleName === 'email' && ruleConfig) {
-          const message = typeof ruleConfig === 'string' ? ruleConfig : undefined;
-          fieldRules.push(rules.email(message));
+          const message = typeof ruleConfig === 'string' ? ruleConfig : undefined
+          fieldRules.push(rules.email(message))
         } else if (ruleName === 'minLength') {
-          const min = typeof ruleConfig === 'number' ? ruleConfig : ruleConfig.value;
-          const message = ruleConfig.message;
-          fieldRules.push(rules.minLength(min, message));
+          const min = typeof ruleConfig === 'number' ? ruleConfig : ruleConfig.value
+          const message = ruleConfig.message
+          fieldRules.push(rules.minLength(min, message))
         } else if (ruleName === 'maxLength') {
-          const max = typeof ruleConfig === 'number' ? ruleConfig : ruleConfig.value;
-          const message = ruleConfig.message;
-          fieldRules.push(rules.maxLength(max, message));
+          const max = typeof ruleConfig === 'number' ? ruleConfig : ruleConfig.value
+          const message = ruleConfig.message
+          fieldRules.push(rules.maxLength(max, message))
         } else if (ruleName === 'numeric' && ruleConfig) {
-          const message = typeof ruleConfig === 'string' ? ruleConfig : undefined;
-          fieldRules.push(rules.numeric(message));
+          const message = typeof ruleConfig === 'string' ? ruleConfig : undefined
+          fieldRules.push(rules.numeric(message))
         } else if (ruleName === 'positive' && ruleConfig) {
-          const message = typeof ruleConfig === 'string' ? ruleConfig : undefined;
-          fieldRules.push(rules.positive(message));
+          const message = typeof ruleConfig === 'string' ? ruleConfig : undefined
+          fieldRules.push(rules.positive(message))
         } else if (ruleName === 'min') {
-          const min = typeof ruleConfig === 'number' ? ruleConfig : ruleConfig.value;
-          const message = ruleConfig.message;
-          fieldRules.push(rules.min(min, message));
+          const min = typeof ruleConfig === 'number' ? ruleConfig : ruleConfig.value
+          const message = ruleConfig.message
+          fieldRules.push(rules.min(min, message))
         } else if (ruleName === 'max') {
-          const max = typeof ruleConfig === 'number' ? ruleConfig : ruleConfig.value;
-          const message = ruleConfig.message;
-          fieldRules.push(rules.max(max, message));
+          const max = typeof ruleConfig === 'number' ? ruleConfig : ruleConfig.value
+          const message = ruleConfig.message
+          fieldRules.push(rules.max(max, message))
         } else if (ruleName === 'pattern') {
-          const regex = ruleConfig.value;
-          const message = ruleConfig.message;
-          fieldRules.push(rules.pattern(regex, message));
+          const regex = ruleConfig.value
+          const message = ruleConfig.message
+          fieldRules.push(rules.pattern(regex, message))
         } else if (ruleName === 'custom' && typeof ruleConfig === 'function') {
-          fieldRules.push(ruleConfig);
+          fieldRules.push(ruleConfig)
         }
-      });
+      })
     }
 
-    return fieldRules;
-  };
+    return fieldRules
+  }
 
   /**
    * Valide un champ spécifique
@@ -107,19 +107,19 @@ export function useFormValidation(schema, options = {}) {
    * @returns {boolean} - true si valide
    */
   const validateField = (fieldName, value, step = null) => {
-    const fieldRules = getFieldRules(fieldName, step);
-    errors.value[fieldName] = [];
+    const fieldRules = getFieldRules(fieldName, step)
+    errors.value[fieldName] = []
 
     for (const rule of fieldRules) {
-      const result = rule(value);
+      const result = rule(value)
       if (result !== true) {
-        errors.value[fieldName].push(result);
-        return false;
+        errors.value[fieldName].push(result)
+        return false
       }
     }
 
-    return true;
-  };
+    return true
+  }
 
   /**
    * Valide une étape complète
@@ -128,21 +128,21 @@ export function useFormValidation(schema, options = {}) {
    * @returns {boolean} - true si l'étape est valide
    */
   const validateStep = (step, formData) => {
-    const stepSchema = schema[`step${step}`];
-    if (!stepSchema) return true;
+    const stepSchema = schema[`step${step}`]
+    if (!stepSchema) return true
 
-    let isValid = true;
-    errors.value = {};
+    let isValid = true
+    errors.value = {}
 
-    Object.keys(stepSchema).forEach(fieldName => {
-      const fieldValid = validateField(fieldName, formData[fieldName], step);
+    Object.keys(stepSchema).forEach((fieldName) => {
+      const fieldValid = validateField(fieldName, formData[fieldName], step)
       if (!fieldValid) {
-        isValid = false;
+        isValid = false
       }
-    });
+    })
 
-    return isValid;
-  };
+    return isValid
+  }
 
   /**
    * Valide tout le formulaire
@@ -150,41 +150,41 @@ export function useFormValidation(schema, options = {}) {
    * @returns {boolean} - true si le formulaire est valide
    */
   const validateAll = (formData) => {
-    errors.value = {};
-    let isValid = true;
+    errors.value = {}
+    let isValid = true
 
     // Si multi-steps
-    if (Object.keys(schema).some(key => key.startsWith('step'))) {
-      const stepKeys = Object.keys(schema).filter(key => key.startsWith('step'));
-      stepKeys.forEach(stepKey => {
-        const stepNumber = parseInt(stepKey.replace('step', ''));
-        const stepValid = validateStep(stepNumber, formData);
+    if (Object.keys(schema).some((key) => key.startsWith('step'))) {
+      const stepKeys = Object.keys(schema).filter((key) => key.startsWith('step'))
+      stepKeys.forEach((stepKey) => {
+        const stepNumber = parseInt(stepKey.replace('step', ''))
+        const stepValid = validateStep(stepNumber, formData)
         if (!stepValid) {
-          isValid = false;
+          isValid = false
         }
-      });
-    } 
+      })
+    }
     // Sinon formulaire simple
     else {
-      console.log('Validating simple form');
-      Object.keys(schema).forEach(fieldName => {
-        const fieldValid = validateField(fieldName, formData[fieldName]);
-        console.log(`Field ${fieldName} valid: ${fieldValid}`);
+      console.log('Validating simple form')
+      Object.keys(schema).forEach((fieldName) => {
+        const fieldValid = validateField(fieldName, formData[fieldName])
+        console.log(`Field ${fieldName} valid: ${fieldValid}`)
         if (!fieldValid) {
-          isValid = false;
+          isValid = false
         }
-      });
+      })
     }
 
-    return isValid;
-  };
+    return isValid
+  }
 
   /**
    * Réinitialise les erreurs
    */
   const clearErrors = () => {
-    errors.value = {};
-  };
+    errors.value = {}
+  }
 
   /**
    * Obtient les erreurs pour un champ
@@ -192,8 +192,8 @@ export function useFormValidation(schema, options = {}) {
    * @returns {Array} - Liste des erreurs
    */
   const getFieldErrors = (fieldName) => {
-    return errors.value[fieldName] || [];
-  };
+    return errors.value[fieldName] || []
+  }
 
   /**
    * Vérifie si un champ a des erreurs
@@ -201,16 +201,16 @@ export function useFormValidation(schema, options = {}) {
    * @returns {boolean}
    */
   const hasFieldError = (fieldName) => {
-    return errors.value[fieldName] && errors.value[fieldName].length > 0;
-  };
+    return errors.value[fieldName] && errors.value[fieldName].length > 0
+  }
 
   /**
    * Compte le nombre total de steps dans le schéma
    * @returns {number}
    */
   const totalSteps = computed(() => {
-    return Object.keys(schema).filter(key => key.startsWith('step')).length;
-  });
+    return Object.keys(schema).filter((key) => key.startsWith('step')).length
+  })
 
   /**
    * Vérifie si un step est valide
@@ -219,8 +219,8 @@ export function useFormValidation(schema, options = {}) {
    * @returns {boolean}
    */
   const isStepValid = (step, formData) => {
-    return validateStep(step, formData);
-  };
+    return validateStep(step, formData)
+  }
 
   /**
    * Vérifie si un champ est requis dans le schéma de validation
@@ -229,34 +229,34 @@ export function useFormValidation(schema, options = {}) {
    * @returns {boolean} - true si le champ est requis
    */
   const isFieldRequired = (fieldName, step = null) => {
-    let fieldSchema;
+    let fieldSchema
 
     if (step !== null && schema[`step${step}`]) {
       // Formulaire multi-steps
-      fieldSchema = schema[`step${step}`]?.[fieldName];
+      fieldSchema = schema[`step${step}`]?.[fieldName]
     } else {
       // Formulaire simple
-      fieldSchema = schema[fieldName];
+      fieldSchema = schema[fieldName]
     }
 
-    if (!fieldSchema) return false;
+    if (!fieldSchema) return false
 
     // Si le schéma est un tableau
     if (Array.isArray(fieldSchema)) {
-      return fieldSchema.some(rule => {
-        if (typeof rule === 'string' && rule === 'required') return true;
-        if (typeof rule === 'object' && rule.name === 'required') return true;
-        return false;
-      });
+      return fieldSchema.some((rule) => {
+        if (typeof rule === 'string' && rule === 'required') return true
+        if (typeof rule === 'object' && rule.name === 'required') return true
+        return false
+      })
     }
 
     // Si le schéma est un objet
     if (typeof fieldSchema === 'object') {
-      return fieldSchema.required === true || typeof fieldSchema.required === 'string';
+      return fieldSchema.required === true || typeof fieldSchema.required === 'string'
     }
 
-    return false;
-  };
+    return false
+  }
 
   return {
     getFieldRules,
@@ -270,8 +270,8 @@ export function useFormValidation(schema, options = {}) {
     currentStep,
     totalSteps,
     isStepValid,
-    isFieldRequired
-  };
+    isFieldRequired,
+  }
 }
 
 /**
@@ -281,34 +281,34 @@ export function useFormValidation(schema, options = {}) {
  * @returns {Object} État du formulaire et fonctions
  */
 export function useForm(initialData = {}, validationSchema = {}) {
-  const formData = ref(initialData);
-  const errorMessage = ref("");
-  const successMessage = ref("");
-  const loading = ref(false);
+  const formData = ref(initialData)
+  const errorMessage = ref('')
+  const successMessage = ref('')
+  const loading = ref(false)
 
-  const validation = useFormValidation(validationSchema);
+  const validation = useFormValidation(validationSchema)
 
   const resetForm = () => {
-    formData.value = { ...initialData };
-    errorMessage.value = "";
-    successMessage.value = "";
-    validation.clearErrors();
-  };
+    formData.value = { ...initialData }
+    errorMessage.value = ''
+    successMessage.value = ''
+    validation.clearErrors()
+  }
 
   const setError = (message) => {
-    errorMessage.value = message;
-    successMessage.value = "";
-  };
+    errorMessage.value = message
+    successMessage.value = ''
+  }
 
   const setSuccess = (message) => {
-    successMessage.value = message;
-    errorMessage.value = "";
-  };
+    successMessage.value = message
+    errorMessage.value = ''
+  }
 
   const clearMessages = () => {
-    errorMessage.value = "";
-    successMessage.value = "";
-  };
+    errorMessage.value = ''
+    successMessage.value = ''
+  }
 
   return {
     formData,
@@ -320,5 +320,5 @@ export function useForm(initialData = {}, validationSchema = {}) {
     setError,
     setSuccess,
     clearMessages,
-  };
+  }
 }
