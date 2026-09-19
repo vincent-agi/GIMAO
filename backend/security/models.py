@@ -1,9 +1,10 @@
 import hashlib
 import secrets
 from datetime import timedelta
+
 from django.db import models
-from django.contrib.auth.models import User
 from django.utils import timezone
+
 from utilisateur.models import Utilisateur
 
 
@@ -16,6 +17,7 @@ class ApiToken(models.Model):
     Un token peut être révoqué explicitement via ``is_revoked`` sans attendre son expiration.
     Le middleware ``ApiTokenMiddleware`` vérifie ce modèle à chaque requête entrante.
     """
+
     token_hash = models.CharField(max_length=64, unique=True, db_index=True)
     user = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, related_name="api_tokens")
 
@@ -24,14 +26,11 @@ class ApiToken(models.Model):
 
     is_revoked = models.BooleanField(default=False)
 
-    def is_valid(self):
-        return not self.is_revoked and self.valid_until > timezone.now()
-
     def __str__(self):
         return f"{self.id} - {self.user.nomUtilisateur} - {self.token_hash[:10]}"
-    
 
-
+    def is_valid(self):
+        return not self.is_revoked and self.valid_until > timezone.now()
 
 
 def create_token(user):
@@ -46,9 +45,7 @@ def create_token(user):
     token_hash = hashlib.sha256(token.encode()).hexdigest()
 
     ApiToken.objects.create(
-        token_hash=token_hash,
-        user=user,
-        valid_until=timezone.now() + timedelta(days=1)
+        token_hash=token_hash, user=user, valid_until=timezone.now() + timedelta(days=1)
     )
 
     return token
