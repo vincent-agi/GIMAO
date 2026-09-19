@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Guide de contribution
+    url: https://github.com/vincent-agi/GIMAO/blob/main/CONTRIBUTING.md
+    about: Consulte le workflow Git, les conventions de commit et le cycle TDD avant d'ouvrir une issue.
+  - name: Documentation utilisateur
+    url: https://github.com/vincent-agi/GIMAO/blob/main/docs/GUIDE_UTILISATEUR.md
+    about: Question d'usage sur l'application GIMAO plutot qu'un bug ou une demande d'evolution.
+  - name: Signalement de securite
+    url: https://github.com/vincent-agi/GIMAO/security/policy
+    about: Ne pas ouvrir d'issue publique pour une vulnerabilite. Suivre la politique de securite.

@@ -1,0 +1,68 @@
+name: "\U0001F41B Rapport de bug"
+description: Signaler un dysfonctionnement dans GIMAO
+title: "fix: <resume court>"
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de signaler ce bug. Plus les informations sont precises, plus la
+        reproduction et la correction (avec test de non-regression) seront rapides.
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Comportement attendu
+      description: Que devrait-il se passer normalement ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed-behavior
+    attributes:
+      label: Comportement observe
+      description: Que se passe-t-il reellement ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Etapes de reproduction
+      description: Etapes precises et ordonnees pour reproduire le bug de maniere fiable
+      placeholder: |
+        1. Aller sur '...'
+        2. Cliquer sur '...'
+        3. Constater '...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs-screenshots
+    attributes:
+      label: Logs / Captures d'ecran
+      description: Colle les logs (backend Django, console navigateur) ou glisse des captures d'ecran. Les blocs de code sont formates automatiquement.
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environnement
+      description: OS, navigateur, version de l'application/commit, mode (dev/prod, Docker ou non)
+      placeholder: "ex. macOS 15 / Chrome 129 / commit a1b2c3d / docker-compose.dev"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severite
+      options:
+        - Bloquant (production indisponible / perte de donnees)
+        - Majeur (fonctionnalite principale cassee, sans contournement)
+        - Mineur (contournement possible)
+        - Cosmetique (UI/UX uniquement)
+    validations:
+      required: true

@@ -1,0 +1,65 @@
+name: "\U0001F680 User Story / Fonctionnalite"
+description: Proposer une nouvelle fonctionnalite sous forme de User Story
+title: "feat: <resume court>"
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de decrire cette fonctionnalite comme une User Story. Plus les criteres
+        d'acceptation sont precis, plus la mise en oeuvre (et son TDD) sera rapide.
+
+  - type: textarea
+    id: user-story
+    attributes:
+      label: User Story
+      description: Formule au format "En tant que / Je veux / Afin de"
+      placeholder: |
+        En tant que ... (role utilisateur, ex: responsable GMAO)
+        Je veux ... (action / fonctionnalite)
+        Afin de ... (benefice / valeur metier)
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Criteres d'acceptation
+      description: Liste testable des conditions pour considerer la User Story terminee (format Given/When/Then bienvenu)
+      placeholder: |
+        - [ ] Etant donne ..., quand ..., alors ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical-specs
+    attributes:
+      label: Specifications techniques
+      description: Endpoints API, modeles/migrations BD, composants Vue, contraintes de performance ou de securite connues
+      placeholder: |
+        - Endpoint(s) concerne(s) :
+        - Modele(s) / migration(s) :
+        - Composant(s) frontend :
+        - Contraintes particulieres :
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: tdd-checklist
+    attributes:
+      label: Checklist TDD
+      description: Rappel du cycle Red-Green-Refactor attendu sur cette fonctionnalite
+      options:
+        - label: Tests unitaires/integration ecrits en premier (Red)
+        - label: Implementation minimale pour faire passer les tests (Green)
+        - label: Refactoring effectue, tests toujours au vert (Refactor)
+        - label: Couverture de test jugee suffisante pour cette fonctionnalite
+
+  - type: input
+    id: milestone
+    attributes:
+      label: Milestone cible
+      description: Version/Milestone GitHub concerne, si connu (ex. 1.4.0)
+    validations:
+      required: false

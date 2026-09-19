@@ -1,0 +1,24 @@
+# CODEOWNERS - GIMAO
+# Documentation : https://docs.github.com/articles/about-code-owners
+# La regle la plus specifique (derniere correspondance) l'emporte.
+
+# Proprietaire par defaut de tout le depot
+* @vincent-agi
+
+# Backend Django / DRF
+/backend/ @vincent-agi
+
+# Frontend Vue.js
+/frontend/ @vincent-agi
+
+# Infra (Docker, Nginx, scripts, CI/CD)
+/nginx/ @vincent-agi
+/scripts/ @vincent-agi
+/.github/ @vincent-agi
+/docker-compose.dev.yml @vincent-agi
+/docker-compose.prod.yml @vincent-agi
+
+# Gouvernance / documentation
+/docs/ @vincent-agi
+/SECURITY.md @vincent-agi
+/CONTRIBUTING.md @vincent-agi
