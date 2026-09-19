@@ -3,7 +3,14 @@ from django.utils import timezone
 from factory.django import DjangoModelFactory
 
 from donnees.models import Fabricant, Fournisseur, Lieu
-from equipement.models import Compteur, Declencher, Equipement, FamilleEquipement, ModeleEquipement
+from equipement.models import (
+    Compteur,
+    Declencher,
+    Equipement,
+    FamilleEquipement,
+    ModeleEquipement,
+    VehiculeProfile,
+)
 from maintenance.models import (
     BonTravail,
     DemandeIntervention,
@@ -102,6 +109,17 @@ class EquipementFactory(DjangoModelFactory):
     fournisseur = factory.SubFactory(FournisseurFactory)
     fabricant = factory.SelfAttribute("modele.fabricant")
     createurEquipement = factory.SubFactory(UtilisateurFactory)
+
+
+class VehiculeProfileFactory(DjangoModelFactory):
+    class Meta:
+        model = VehiculeProfile
+
+    equipement = factory.SubFactory(EquipementFactory, type="VEHICULE")
+    vin = factory.Sequence(lambda n: f"VF1BB{n:012d}")
+    immatriculation = factory.Sequence(lambda n: f"AA-{n % 1000:03d}-AA")
+    genre = "VL"
+    energie = "DIESEL"
 
 
 class CompteurFactory(DjangoModelFactory):

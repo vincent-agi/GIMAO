@@ -8,8 +8,10 @@ from donnees.api.serializers import (
 )
 from donnees.models import Fabricant
 from equipement.models import (
+    CarteGrise,
     Compteur,
     Constituer,
+    ControleTechnique,
     Declencher,
     Equipement,
     FamilleEquipement,
@@ -586,4 +588,34 @@ class VehiculeCreateSerializer(EquipementCreateSerializer):
             "co2",
             "puissanceFiscale",
             "ptac",
+        ]
+
+
+class CarteGriseSerializer(serializers.ModelSerializer):
+    """Certificat d'immatriculation d'un véhicule (cf. CarteGrise, TUS-010)."""
+
+    class Meta:
+        model = CarteGrise
+        fields = [
+            "id",
+            "vehicule_profile",
+            "immatriculation",
+            "titulaire",
+            "date_premiere_mise_circulation",
+            "date_emission",
+        ]
+
+
+class ControleTechniqueSerializer(serializers.ModelSerializer):
+    """Passage au contrôle technique d'un véhicule (cf. ControleTechnique, TUS-011)."""
+
+    class Meta:
+        model = ControleTechnique
+        fields = [
+            "id",
+            "vehicule_profile",
+            "date_passage",
+            "date_echeance",
+            "resultat",
+            "centre_controle",
         ]

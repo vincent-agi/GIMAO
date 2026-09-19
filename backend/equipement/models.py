@@ -468,3 +468,115 @@ class VehiculeProfile(models.Model):
 
     def __str__(self):
         return f"{self.equipement_id} - {self.immatriculation} - {self.vin}"
+
+
+class CarteGrise(models.Model):
+    """
+    Carte grise (certificat d'immatriculation) d'un véhicule.
+
+    Historisé en 1-N sur ``VehiculeProfile`` : un changement de plaque ou de
+    titulaire crée une nouvelle entrée plutôt que d'écraser la précédente
+    (cf. TUS-010, ADR-001). La carte grise active est la plus récente
+    (``ordering`` sur ``-date_emission``).
+
+    Attributes:
+        vehicule_profile: Véhicule concerné par ce certificat.
+        immatriculation: Immatriculation figurant sur ce certificat (peut
+            différer de ``VehiculeProfile.immatriculation`` si le véhicule a
+            été réimmatriculé depuis, la carte grise étant un historique).
+        titulaire: Titulaire du certificat d'immatriculation.
+        date_premiere_mise_circulation: Date de première mise en circulation
+            du véhicule (fixe, ne change pas d'une carte grise à l'autre).
+        date_emission: Date d'émission de ce certificat.
+    """
+
+    vehicule_profile = models.ForeignKey(
+        VehiculeProfile,
+        on_delete=models.CASCADE,
+        related_name="cartes_grises",
+        help_text="Véhicule concerné par ce certificat",
+    )
+    immatriculation = models.CharField(
+        max_length=9,
+        validators=[IMMATRICULATION_SIV_VALIDATOR],
+        help_text="Immatriculation figurant sur ce certificat",
+    )
+    titulaire = models.CharField(
+        max_length=200,
+        help_text="Titulaire du certificat d'immatriculation",
+    )
+    date_premiere_mise_circulation = models.DateField(
+        help_text="Date de première mise en circulation du véhicule",
+    )
+    date_emission = models.DateField(
+        help_text="Date d'émission de ce certificat",
+    )
+
+    class Meta:
+        db_table = "gimao_carte_grise"
+        verbose_name = "Carte grise"
+        verbose_name_plural = "Cartes grises"
+        ordering = ["-date_emission"]
+        indexes = [
+            models.Index(fields=["vehicule_profile", "-date_emission"], name="cg_veh_date_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.id} - {self.immatriculation} - {self.titulaire}"
+
+
+class ControleTechnique(models.Model):
+    """
+    Passage au contrôle technique d'un véhicule.
+
+    Historisé en 1-N sur ``VehiculeProfile`` (cf. TUS-011). Le champ
+    ``date_echeance`` porte une sémantique différente selon ``resultat`` :
+    échéance du prochain contrôle périodique si favorable, échéance de la
+    contre-visite (généralement à 2 mois) si défavorable — la valeur exacte
+    est de la responsabilité de l'appelant (frontend/service), ce modèle ne
+    fait que la stocker.
+
+    Attributes:
+        vehicule_profile: Véhicule contrôlé.
+        date_passage: Date à laquelle le contrôle a été effectué.
+        date_echeance: Date d'échéance résultant de ce contrôle (prochain CT
+            périodique, ou contre-visite si ``resultat`` est défavorable).
+        resultat: Résultat du contrôle.
+        centre_controle: Nom du centre de contrôle technique (facultatif).
+    """
+
+    RESULTAT_CHOICES = [
+        ("FAVORABLE", "Favorable"),
+        ("DEFAVORABLE", "Défavorable"),
+        ("CONTRE_VISITE", "Contre-visite"),
+    ]
+
+    vehicule_profile = models.ForeignKey(
+        VehiculeProfile,
+        on_delete=models.CASCADE,
+        related_name="controles_techniques",
+        help_text="Véhicule contrôlé",
+    )
+    date_passage = models.DateField(help_text="Date à laquelle le contrôle a été effectué")
+    date_echeance = models.DateField(
+        help_text="Date d'échéance résultant de ce contrôle (prochain CT ou contre-visite)",
+    )
+    resultat = models.CharField(max_length=20, choices=RESULTAT_CHOICES)
+    centre_controle = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Nom du centre de contrôle technique",
+    )
+
+    class Meta:
+        db_table = "gimao_controle_technique"
+        verbose_name = "Contrôle technique"
+        verbose_name_plural = "Contrôles techniques"
+        ordering = ["-date_passage"]
+        indexes = [
+            models.Index(fields=["vehicule_profile", "-date_passage"], name="ct_veh_date_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.id} - {self.vehicule_profile_id} - {self.resultat} - {self.date_passage}"

@@ -15,8 +15,10 @@ from equipement import services
 
 # Serializers
 from equipement.api.serializers import (
+    CarteGriseSerializer,
     CompteurSerializer,
     ConstituerSerializer,
+    ControleTechniqueSerializer,
     DeclenchementSerializer,
     EquipementAffichageSerializer,
     EquipementCreateSerializer,
@@ -28,8 +30,10 @@ from equipement.api.serializers import (
     VehiculeSerializer,
 )
 from equipement.models import (
+    CarteGrise,
     Compteur,
     Constituer,
+    ControleTechnique,
     Declencher,
     DocumentEquipement,
     Equipement,
@@ -930,3 +934,41 @@ class DeclenchementViewSet(GimaoModelViewSet):
         return Response(
             {"detail": "Modifications appliquées avec succès"}, status=status.HTTP_200_OK
         )
+
+
+class CarteGriseViewSet(GimaoModelViewSet):
+    """
+    CRUD sur les cartes grises (certificats d'immatriculation) d'un véhicule.
+
+    Filtre disponible (query param) : ``vehicule_profile`` — id du véhicule
+    dont on veut l'historique des cartes grises.
+    """
+
+    queryset = CarteGrise.objects.select_related("vehicule_profile").all()
+    serializer_class = CarteGriseSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        vehicule_profile_id = self.request.query_params.get("vehicule_profile")
+        if vehicule_profile_id:
+            queryset = queryset.filter(vehicule_profile_id=vehicule_profile_id)
+        return queryset
+
+
+class ControleTechniqueViewSet(GimaoModelViewSet):
+    """
+    CRUD sur les contrôles techniques d'un véhicule.
+
+    Filtre disponible (query param) : ``vehicule_profile`` — id du véhicule
+    dont on veut l'historique des contrôles techniques.
+    """
+
+    queryset = ControleTechnique.objects.select_related("vehicule_profile").all()
+    serializer_class = ControleTechniqueSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        vehicule_profile_id = self.request.query_params.get("vehicule_profile")
+        if vehicule_profile_id:
+            queryset = queryset.filter(vehicule_profile_id=vehicule_profile_id)
+        return queryset
