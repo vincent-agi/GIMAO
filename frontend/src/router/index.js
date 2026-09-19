@@ -307,6 +307,15 @@ const routes = [
     meta: { title: 'Modifier Equipement', requiresPermissions: ['eq:edit'] }
   },
 
+  // Véhicules (flotte) ----------------------------------------------------------
+
+  {
+    path: '/VehicleList',
+    name: 'VehicleList',
+    component: () => import('@/views/Vehicles/VehicleList.vue'),
+    meta: { title: 'Véhicules', requiresPermissions: ['veh:viewList'] }
+  },
+
   {
     path: '/CounterDetail/:id',
     name: 'CounterDetail',
