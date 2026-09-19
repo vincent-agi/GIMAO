@@ -108,17 +108,19 @@
 
 ## TUS-007 — ♻️ refactor(fondations): finaliser le composable useApi
 
-**En tant que** développeur frontend, **je veux** réactiver et finaliser `composables/useApi.js` (actuellement largement commenté), **afin de** disposer d'un point d'entrée HTTP unique conforme à la consigne "aucun appel API direct dans les vues".
+**En tant que** développeur frontend, **je veux** que tout appel HTTP passe par `composables/useApi.js`, **afin de** disposer d'un point d'entrée HTTP unique conforme à la consigne "aucun appel API direct dans les vues".
 
-**Critères d'acceptation**
-- Given un composant Vue existant appelant `axios`/`http.js` directement, When il est migré vers `useApi`, Then son comportement (succès/erreur/loading) est identique.
-- `useApi` expose au minimum `get`, `post`, `put`, `patch`, `remove`, avec gestion uniforme de `loading`/`error`.
+**Constat en réalisant le ticket** : `useApi.js` était déjà fonctionnel et utilisé dans 63 fichiers (l'évaluation initiale du bilan, basée sur une lecture partielle du fichier — d'anciens brouillons commentés en tête de fichier — était erronée ; corrigée dans `BILAN_EXISTANT.md`/`TODO.md`). Seuls 2 écarts réels trouvés par grep sur `axios`/`@/composables/http` :
+- `SetPassword.vue` : import `axios` mort (l'appel réel utilisait déjà `useApi`) — supprimé.
+- `ExportData.vue` : accès direct à `http.js` pour le téléchargement de fichier (`responseType: 'blob'` + lecture de l'en-tête `content-disposition` pour le nom de fichier), fonctionnalité que `useApi` n'exposait pas (`get`/`post`... ne retournent que `response.data`).
+
+**Résolution** : ajout de `useApi().getRaw(url, params, extraConfig)`, qui retourne la réponse Axios complète (headers inclus) et accepte des options Axios additionnelles (`responseType`), pour couvrir ce cas sans dérogation à la règle. `ExportData.vue` migré dessus.
 
 **Spécifications techniques**
-- Fichier : `frontend/src/composables/useApi.js` (décommenter/réécrire), `frontend/src/composables/http.js` (vérifier config axios : base URL, header `Authorization: Bearer`).
-- Migrer un composant pilote existant (ex. `views/Equipments/EquipmentList.vue`) pour valider l'API du composable avant de l'imposer aux nouvelles vues flotte.
+- Fichier : `frontend/src/composables/useApi.js` (ajout de `getRaw`, JSDoc mise à jour).
+- Fichiers migrés : `frontend/src/views/DataManagement/ExportData.vue` (`http.get` → `api.getRaw`), `frontend/src/views/Auth/SetPassword.vue` (suppression de l'import `axios` mort).
 
-**Clean Code / TDD** : Tests Vitest `frontend/src/composables/__tests__/useApi.test.js` (mock axios, cas succès/erreur) écrits avant la réécriture.
+**Clean Code / TDD** : Tests Vitest `frontend/src/composables/__tests__/useApi.spec.js` (7 tests : get/post/remove, gestion loading/error, `getRaw` avec headers et query params). Suite complète frontend exécutée sans régression (110 tests passent, 5 skip pré-existants).
 
 ---
 

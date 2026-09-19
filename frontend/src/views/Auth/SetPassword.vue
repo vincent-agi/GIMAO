@@ -51,7 +51,6 @@
 </template>
 
 <script>
-import axios from 'axios'
 import { useApi } from '@/composables/useApi'
 import { API_BASE_URL } from '@/utils/constants'
 

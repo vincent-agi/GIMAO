@@ -40,7 +40,7 @@ Complément actionnable de `BILAN_EXISTANT.md`. Classé par domaine, sans décou
 
 ## C. Frontend — Vue 3
 
-- [ ] **Finaliser/réactiver `composables/useApi.js`** (actuellement majoritairement commenté) avant d'imposer son usage systématique sur les nouvelles vues flotte.
+- [x] ~~Finaliser/réactiver `composables/useApi.js`~~ — **correction (TUS-007) : déjà fonctionnel, utilisé dans 63 fichiers.** Seuls 2 écarts corrigés : import mort dans `SetPassword.vue`, et ajout de `useApi.getRaw()` pour `ExportData.vue` (téléchargement de fichier nécessitant les en-têtes de réponse).
 - [ ] Créer l'arborescence `views/Vehicles/` en miroir de `views/Equipments/` (`VehicleList`, `VehicleDetail`, `CreateVehicle`, `EditVehicle`) + sous-vues `ControlesTechniques/`, `Pneumatiques/`, `Carburant/`, `Contrats/`.
 - [ ] Créer `views/Drivers/` (ou extension de `views/Users/`) pour la gestion des permis/habilitations et l'affectation véhicule-conducteur.
 - [ ] Étendre le dashboard (`apexcharts`) avec les KPIs flotte : coût/km, échéances CT/assurance à venir, consommation moyenne, taux de disponibilité flotte.

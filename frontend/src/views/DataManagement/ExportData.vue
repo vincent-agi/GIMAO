@@ -220,7 +220,6 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useStore } from 'vuex'
 import { useApi } from '@/composables/useApi'
 import { API_BASE_URL } from '@/utils/constants'
-import http from '@/composables/http'
 import { FormSelect, FormField } from '@/components/Forms/inputType'
 
 const api = useApi()
@@ -430,10 +429,7 @@ const handleExport = async () => {
   }
 
   try {
-    const response = await http.get('export/', {
-      params,
-      responseType: 'blob'
-    })
+    const response = await api.getRaw('export/', params, { responseType: 'blob' })
 
     let filename = `${form.exportType}.${form.fileType}`
     const disposition = response.headers['content-disposition']

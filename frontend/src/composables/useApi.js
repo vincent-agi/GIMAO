@@ -121,13 +121,19 @@ import api from "@/composables/http";
  *   post: (url: string, data?: object) => Promise<any>,
  *   put: (url: string, data?: object) => Promise<any>,
  *   patch: (url: string, data?: object) => Promise<any>,
- *   remove: (url: string) => Promise<any>
+ *   remove: (url: string) => Promise<any>,
+ *   getRaw: (url: string, params?: object, extraConfig?: object) => Promise<import('axios').AxiosResponse>
  * }}
  *
  * @example
  * const api = useApi()
  * const equipements = await api.get('equipements/', { page: 1 })
  * await api.post('demandes/', { nom: 'Panne moteur', equipement: 3 })
+ *
+ * @example
+ * // Téléchargement de fichier : besoin des en-têtes (nom de fichier) et du blob complet,
+ * // donc `getRaw` (réponse Axios entière) plutôt que `get` (qui ne retourne que `.data`).
+ * const response = await api.getRaw('export/', { exportType: 'eq' }, { responseType: 'blob' })
  */
 export function useApi(baseURL = null) {
   const data = ref(null);
@@ -169,6 +175,32 @@ export function useApi(baseURL = null) {
   const remove = (url) =>
     request({ url, method: "DELETE" });
 
+  /**
+   * Effectue une requête GET et retourne la réponse Axios complète (headers inclus),
+   * au lieu de `response.data` uniquement. Réservé aux cas où l'appelant a besoin des
+   * en-têtes (ex: `content-disposition` pour un nom de fichier) ou d'un `responseType`
+   * non-JSON (ex: `blob` pour un téléchargement) — sinon préférer `get`.
+   *
+   * @param {string} url
+   * @param {object} [params]
+   * @param {object} [extraConfig] - Options Axios additionnelles (ex: `{ responseType: 'blob' }`).
+   * @returns {Promise<import('axios').AxiosResponse>}
+   */
+  const getRaw = async (url, params = {}, extraConfig = {}) => {
+    loading.value = true;
+    error.value = null;
+    try {
+      const response = await api({ url, method: "GET", params, ...extraConfig });
+      data.value = response.data;
+      return response;
+    } catch (err) {
+      error.value = err.response?.data || err.message;
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
   return {
     data,
     loading,
@@ -178,5 +210,6 @@ export function useApi(baseURL = null) {
     put,
     patch,
     remove,
+    getRaw,
   };
 }
