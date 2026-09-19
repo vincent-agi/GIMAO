@@ -20,6 +20,8 @@ select = [
 ]
 ignore = [
     "E501",  # longueur de ligne : déléguée à `ruff format`
+    "DJ001",  # CharField/TextField null=True existants : fix nécessiterait une migration
+              # AlterField (NOT NULL) risquée en prod si des lignes NULL existent déjà.
 ]
 
 [tool.ruff.lint.per-file-ignores]
