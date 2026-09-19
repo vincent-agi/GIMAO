@@ -317,6 +317,28 @@ const routes = [
   },
 
   {
+    path: '/VehicleDetail/:id',
+    name: 'VehicleDetail',
+    component: () => import('@/views/Vehicles/VehicleDetail.vue'),
+    props: true,
+    meta: { title: 'Détail du véhicule', requiresPermissions: ['veh:viewDetail'] }
+  },
+
+  {
+    path: '/CreateVehicle',
+    name: 'CreateVehicle',
+    component: () => import('@/views/Vehicles/CreateVehicle.vue'),
+    meta: { title: 'Ajouter un véhicule', requiresPermissions: ['veh:create'] }
+  },
+
+  {
+    path: '/EditVehicle/:id',
+    name: 'EditVehicle',
+    component: () => import('@/views/Vehicles/EditVehicle.vue'),
+    meta: { title: 'Modifier le véhicule', requiresPermissions: ['veh:edit'] }
+  },
+
+  {
     path: '/CounterDetail/:id',
     name: 'CounterDetail',
     component: () => import('@/views/Equipments/Counters/CounterDetail.vue'),
