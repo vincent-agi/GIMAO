@@ -1,3 +1,4 @@
+from django.core.validators import RegexValidator
 from django.db import models
 from stock.models import Consommable
 from donnees.models import Lieu, Document, Fabricant, Fournisseur
@@ -54,6 +55,7 @@ class Equipement(ArchivableMixin, models.Model):
         ('MECANIQUE', 'Mécanique'),
         ('ELECTRIQUE', 'Électrique'),
         ('HYDRAULIQUE', 'Hydraulique'),
+        ('VEHICULE', 'Véhicule'),
         ('PLURITECHNIQUE', 'Pluritechnique'),
     ]
 
@@ -265,3 +267,117 @@ class DocumentEquipement(models.Model):
         db_table = 'gimao_document_equipement'
         verbose_name = 'Lien Document-Equipement'
         verbose_name_plural = 'Liens Documents-Equipements'
+
+
+VIN_VALIDATOR = RegexValidator(
+    regex=r'^[A-HJ-NPR-Z0-9]{17}$',
+    message="Le VIN doit comporter exactement 17 caractères alphanumériques (hors I, O, Q, exclus par la norme ISO 3779).",
+)
+
+IMMATRICULATION_SIV_VALIDATOR = RegexValidator(
+    regex=r'^[A-Z]{2}-\d{3}-[A-Z]{2}$',
+    message="L'immatriculation doit respecter le format SIV français : AA-123-AA.",
+)
+
+
+class VehiculeProfile(models.Model):
+    """
+    Profil véhicule d'un équipement, en relation un-à-un avec ``Equipement``.
+
+    Porte les champs spécifiques à un véhicule automobile/poids lourd (VIN,
+    immatriculation, genre, énergie, caractéristiques réglementaires) sans
+    polluer le modèle générique ``Equipement``, qui reste le socle commun à
+    tous les types d'équipements (cf. ADR-001, ``docs/adr/0001-modelisation-vehicule.md``).
+
+    Un ``Equipement`` n'a un ``VehiculeProfile`` que si son ``type`` vaut
+    ``'VEHICULE'`` ; la création des deux est faite conjointement par
+    ``equipement.services.create_vehicule`` dans une transaction atomique.
+
+    Attributes:
+        equipement: L'``Equipement`` générique dont ce profil complète les
+            données. Clé primaire du profil (relation 1-1 stricte).
+        vin: Numéro d'identification du véhicule (17 caractères, unique),
+            conforme à la norme ISO 3779.
+        immatriculation: Plaque d'immatriculation au format SIV français
+            (``AA-123-AA``), unique.
+        genre: Catégorie du véhicule, utilisée notamment pour déterminer la
+            catégorie de permis de conduire requise pour l'affectation d'un
+            conducteur (cf. Milestone M4).
+        energie: Type d'énergie/motorisation du véhicule.
+        co2: Émissions de CO2 en grammes par kilomètre (le cas échéant).
+        puissanceFiscale: Puissance fiscale du véhicule, en chevaux fiscaux.
+        ptac: Poids total autorisé en charge, en kilogrammes.
+    """
+
+    GENRE_CHOICES = [
+        ('VL', 'Véhicule léger'),
+        ('PL', 'Poids lourd'),
+        ('UTILITAIRE', 'Utilitaire'),
+        ('REMORQUE', 'Remorque'),
+    ]
+
+    ENERGIE_CHOICES = [
+        ('ESSENCE', 'Essence'),
+        ('DIESEL', 'Diesel'),
+        ('ELECTRIQUE', 'Électrique'),
+        ('HYBRIDE', 'Hybride'),
+        ('GPL', 'GPL'),
+        ('AUTRE', 'Autre'),
+    ]
+
+    equipement = models.OneToOneField(
+        Equipement,
+        primary_key=True,
+        on_delete=models.CASCADE,
+        related_name='vehicule_profile',
+        help_text="Équipement générique dont ce profil complète les données véhicule",
+    )
+    vin = models.CharField(
+        max_length=17,
+        unique=True,
+        validators=[VIN_VALIDATOR],
+        help_text="Numéro d'identification du véhicule (VIN), 17 caractères ISO 3779",
+    )
+    immatriculation = models.CharField(
+        max_length=9,
+        unique=True,
+        validators=[IMMATRICULATION_SIV_VALIDATOR],
+        help_text="Plaque d'immatriculation au format SIV français (AA-123-AA)",
+    )
+    genre = models.CharField(
+        max_length=20,
+        choices=GENRE_CHOICES,
+        help_text="Catégorie du véhicule (VL, PL, utilitaire, remorque)",
+    )
+    energie = models.CharField(
+        max_length=20,
+        choices=ENERGIE_CHOICES,
+        help_text="Type d'énergie/motorisation du véhicule",
+    )
+    co2 = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Émissions de CO2 en grammes par kilomètre",
+    )
+    puissanceFiscale = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Puissance fiscale en chevaux fiscaux",
+    )
+    ptac = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Poids total autorisé en charge, en kilogrammes",
+    )
+
+    def __str__(self):
+        return f"{self.equipement_id} - {self.immatriculation} - {self.vin}"
+
+    class Meta:
+        db_table = 'gimao_vehicule_profile'
+        verbose_name = 'Profil véhicule'
+        verbose_name_plural = 'Profils véhicule'
+        indexes = [
+            models.Index(fields=['immatriculation'], name='vehicule_immat_idx'),
+            models.Index(fields=['vin'], name='vehicule_vin_idx'),
+        ]

@@ -8,6 +8,7 @@ from .models import (
     FamilleEquipement,
     ModeleEquipement,
     StatutEquipement,
+    VehiculeProfile,
 )
 
 
@@ -118,3 +119,13 @@ class DeclencherAdmin(admin.ModelAdmin):
 class DocumentEquipementAdmin(admin.ModelAdmin):
     list_display  = ('equipement', 'document')
     search_fields = ('equipement__designation', 'document__nomDocument')
+
+
+# ==================== FLOTTE ====================
+
+@admin.register(VehiculeProfile)
+class VehiculeProfileAdmin(admin.ModelAdmin):
+    list_display  = ('immatriculation', 'vin', 'equipement', 'genre', 'energie')
+    list_filter   = ('genre', 'energie')
+    search_fields = ('immatriculation', 'vin', 'equipement__designation')
+    ordering      = ('immatriculation',)
