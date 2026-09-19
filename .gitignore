@@ -1,38 +1,51 @@
 cheat_sheet.txt
 backend/createFiles.sh
 .DS_Store
+Thumbs.db
+Desktop.ini
 
-# Node modules
-node_modules/
-
-# Fichiers binaire 
-**/__pycache__/*
+# --- Python / Django ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.egg-info/
 
 # Les migrations sont désormais versionnées (ne pas ignorer)
 # backend/*/migrations/0*.py
 
-# Fichier de stockage des images et des différents types de fichiers complémentaires 
-backend/media/*/*
-!backend/media/cron_logs/cron.log
-
-# Variables d'environnement
-*.env*
-!.env.*.example
-
 # Suppression du venv backend
 backend/venv/
 backend/.venv/
-
 venv/
 .venv/
 
-# Fichiers d'IDE
-*/.idea
-
-# distribution
+# --- Node / Vue ---
+node_modules/
 frontend/dist/*
+npm-debug.log*
+.npm/
 
-# Fichiers de configuration de Visual Studio Code
+# --- Fichiers binaire ---
+# Fichiers de stockage des images et des différents types de fichiers complémentaires
+backend/media/*/*
+!backend/media/cron_logs/cron.log
+
+# --- Variables d'environnement ---
+*.env*
+!.env.*.example
+
+# --- Docker ---
+docker-compose.override.yml
+
+# --- Fichiers d'IDE ---
+*/.idea
+.idea/
 .vscode/
 
 # Configuration locale Claude Code (outils, permissions machine)
@@ -40,3 +53,7 @@ frontend/dist/*
 
 # Coverage / Fichiers de log de test
 frontend/coverage/
+
+# SBOM / rapports d'audit générés localement
+sbom*.json
+*.sbom.json

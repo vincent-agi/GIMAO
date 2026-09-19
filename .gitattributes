@@ -1,0 +1,27 @@
+# Normalisation stricte des fins de ligne : LF en depot, conversion auto a la checkout
+* text=auto eol=lf
+
+# Fichiers Windows qui doivent garder CRLF
+*.bat text eol=crlf
+
+# --- Fichiers binaires (pas de diff, pas de conversion EOL) ---
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.pdf binary
+*.zip binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+
+# --- Fichiers generes ou vendored : masques dans les diffs GitHub ---
+CHANGELOG.md linguist-generated=true merge=union
+package-lock.json linguist-generated=true -diff
+backend/package-lock.json linguist-generated=true -diff
+frontend/package-lock.json linguist-generated=true -diff
+backend/schema_bd.svg linguist-generated=true -diff
+backend/schema_bd.png linguist-generated=true -diff binary
