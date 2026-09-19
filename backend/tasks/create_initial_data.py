@@ -51,6 +51,7 @@ def create_initial_data():
         'sup': 'Fournisseurs',
         'man': 'Fabricants',
         'eqmod': "Modèles d'équipement",
+        'veh': 'Véhicules',
         'export': 'Export',
         'menu': 'Menu',
         'dash': 'Dashboard',

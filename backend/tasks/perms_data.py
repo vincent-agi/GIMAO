@@ -144,6 +144,15 @@ perms = {
     'eqmod:export':     ("Exporter les modèles d'équipement",        'action',    'eqmod:viewList'),
     'eqmod:archive':    ("Archiver un modèle d'équipement",          'action',    'eqmod:viewDetail'),
 
+    # ── Véhicules (flotte) ───────────────────────────────────────────────────
+    'veh:viewList':   ("Voir la liste des véhicules",    'affichage', None),
+    'veh:viewDetail': ("Voir le détail d'un véhicule",   'affichage', 'veh:viewList'),
+    'veh:create':     ("Créer un véhicule",              'action',    'veh:viewList'),
+    'veh:edit':       ("Modifier un véhicule",           'action',    'veh:viewDetail'),
+    'veh:delete':     ("Supprimer un véhicule",          'action',    'veh:viewDetail'),
+    'veh:export':     ("Exporter les véhicules",         'action',    'veh:viewList'),
+    'veh:archive':    ("Archiver un véhicule",           'action',    'veh:viewDetail'),
+
     # ── Export global ────────────────────────────────────────────────────────
     'export:view': ("Accéder aux exports de données", 'affichage', None),
     'export:eq': ("Exporter les équipements", 'action', 'export:view'),
@@ -195,6 +204,7 @@ perms_map = {
         'di:viewList', 'di:viewDetail', 'di:create', 'di:editCreated',
         'bt:viewList', 'bt:viewDetail', 'bt:start', 'bt:end', 'bt:editAssigned',
         'eq:viewList', 'eq:viewDetail', 'eq:edit', 'eq:document.add',
+        'veh:viewList', 'veh:viewDetail',
         'cp:viewList', 'cp:viewDetail', 'cp:edit',
         'mp:viewList', 'mp:viewDetail',
         'stock:view',
@@ -207,6 +217,7 @@ perms_map = {
         'bt:viewList', 'bt:viewDetail', 'bt:start', 'bt:end', 'bt:editAssigned',
         'eq:viewList', 'eq:viewDetail', 'eq:edit', 'eq:document.add',
         'eq:view.calendar',
+        'veh:viewList', 'veh:viewDetail', 'veh:edit',
         'cp:viewList', 'cp:viewDetail', 'cp:edit',
         'mp:viewList', 'mp:viewDetail', 'mp:create', 'mp:edit',
         'stock:view',
@@ -218,6 +229,7 @@ perms_map = {
         'di:viewList', 'di:viewDetail', 'di:create', 'di:editCreated',
         'bt:viewList', 'bt:viewDetail',
         'eq:viewList', 'eq:viewDetail',
+        'veh:viewList', 'veh:viewDetail',
         'dash:display.diCreated', 'dash:display.eq', 'dash:stats.di','dash:display.vertical',
     ],
 
