@@ -1,8 +1,9 @@
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 
 from donnees.models import Document
-from equipement.models import Equipement
+from equipement.models import Equipement, VehiculeProfile
 from gimao.mixins import ArchivableMixin
 from stock.models import Consommable
 from utilisateur.models import Utilisateur
@@ -342,3 +343,202 @@ class BonTravailConsommableReservation(models.Model):
 
     def __str__(self):
         return f"{self.id} - {self.bon_travail_consommable.bon_travail.nom} - Reservation {self.magasin.nom} (x{self.quantite})"
+
+
+class IncidentVehicule(models.Model):
+    """
+    Profil véhicule d'une DemandeIntervention, en relation un-à-un.
+
+    Porte les métadonnées spécifiques à un incident/avarie véhicule (type
+    d'avarie, gravité, immobilisation) sans polluer ``DemandeIntervention``,
+    qui reste le socle générique de signalement d'anomalie pour tout type
+    d'équipement (cf. ADR-001, TUS-020 — même pattern que ``VehiculeProfile``
+    sur ``Equipement``).
+
+    Un ``IncidentVehicule`` n'a de sens que si la ``DemandeIntervention``
+    porte sur un équipement de type ``VEHICULE`` ; ce n'est pas imposé au
+    niveau base de données (la DI reste générique), mais au niveau service
+    (cf. TUS-020, à charge de l'appelant de ne créer ce profil que dans ce cas).
+
+    Attributes:
+        demande_intervention: La ``DemandeIntervention`` générique dont ce
+            profil complète les données véhicule. Clé primaire du profil
+            (relation 1-1 stricte).
+        type_avarie: Nature de l'avarie signalée.
+        gravite: Niveau de gravité perçu par le déclarant.
+        immobilisation: Indique si le véhicule est immobilisé suite à cet
+            incident (ne peut plus être utilisé en l'état).
+    """
+
+    TYPE_AVARIE_CHOICES = [
+        ("VOYANT", "Voyant tableau de bord"),
+        ("BRUIT_ANORMAL", "Bruit anormal"),
+        ("ACCIDENT_ROUTE", "Accident de la route"),
+        ("CODE_DEFAUT", "Code défaut"),
+        ("USURE_SIGNALEE", "Usure signalée"),
+        ("AUTRE", "Autre"),
+    ]
+
+    GRAVITE_CHOICES = [
+        ("MINEURE", "Mineure"),
+        ("MODEREE", "Modérée"),
+        ("CRITIQUE", "Critique"),
+    ]
+
+    demande_intervention = models.OneToOneField(
+        DemandeIntervention,
+        primary_key=True,
+        on_delete=models.CASCADE,
+        related_name="incident_vehicule",
+        help_text="Demande d'intervention générique dont ce profil complète les données véhicule",
+    )
+    type_avarie = models.CharField(
+        max_length=20,
+        choices=TYPE_AVARIE_CHOICES,
+        help_text="Nature de l'avarie signalée",
+    )
+    gravite = models.CharField(
+        max_length=10,
+        choices=GRAVITE_CHOICES,
+        default="MINEURE",
+        help_text="Niveau de gravité perçu par le déclarant",
+    )
+    immobilisation = models.BooleanField(
+        default=False,
+        help_text="Le véhicule est-il immobilisé suite à cet incident ?",
+    )
+
+    class Meta:
+        db_table = "gimao_incident_vehicule"
+        verbose_name = "Incident véhicule"
+        verbose_name_plural = "Incidents véhicule"
+
+    def __str__(self):
+        return f"{self.demande_intervention_id} - {self.type_avarie}"
+
+
+class Sinistre(models.Model):
+    """
+    Sinistre (accident de la route) rattaché à un ``IncidentVehicule``.
+
+    Relation 1-1 : un ``IncidentVehicule`` ne peut avoir qu'un seul
+    ``Sinistre``. La règle métier "un sinistre ne peut être associé qu'à
+    un incident de type ``ACCIDENT_ROUTE``" est appliquée par ``clean()``
+    (cf. TUS-021) — appeler ``full_clean()`` avant ``save()`` pour la faire
+    respecter, ce n'est pas une contrainte de base de données.
+
+    Attributes:
+        incident_vehicule: L'incident (accident de la route) concerné.
+        date_accident: Date à laquelle l'accident a eu lieu.
+        lieu_accident: Lieu de l'accident.
+        tiers_impliques: Description des tiers impliqués (personnes,
+            véhicules), texte libre.
+        degats_constates: Description des dégâts constatés.
+        numero_declaration_assurance: Numéro de dossier auprès de l'assurance.
+        expertise: Compte-rendu d'expertise, si disponible.
+    """
+
+    incident_vehicule = models.OneToOneField(
+        IncidentVehicule,
+        primary_key=True,
+        on_delete=models.CASCADE,
+        related_name="sinistre",
+        help_text="Incident (accident de la route) concerné",
+    )
+    date_accident = models.DateField(help_text="Date à laquelle l'accident a eu lieu")
+    lieu_accident = models.CharField(max_length=255, help_text="Lieu de l'accident")
+    tiers_impliques = models.TextField(
+        blank=True, null=True, help_text="Description des tiers impliqués"
+    )
+    degats_constates = models.TextField(
+        blank=True, null=True, help_text="Description des dégâts constatés"
+    )
+    numero_declaration_assurance = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Numéro de dossier auprès de l'assurance",
+    )
+    expertise = models.TextField(blank=True, null=True, help_text="Compte-rendu d'expertise")
+
+    class Meta:
+        db_table = "gimao_sinistre"
+        verbose_name = "Sinistre"
+        verbose_name_plural = "Sinistres"
+
+    def __str__(self):
+        return f"{self.incident_vehicule_id} - {self.lieu_accident} - {self.date_accident}"
+
+    def clean(self):
+        super().clean()
+        if self.incident_vehicule_id and self.incident_vehicule.type_avarie != "ACCIDENT_ROUTE":
+            raise ValidationError(
+                "Un sinistre ne peut être associé qu'à un incident de type "
+                "« Accident de la route »."
+            )
+
+
+class CodeDefautOBD(models.Model):
+    """
+    Code défaut (DTC) relevé sur un véhicule, à la valise diagnostic ou via un boîtier OBD.
+
+    Rattaché obligatoirement au véhicule (``VehiculeProfile``), et
+    optionnellement à l'incident (``IncidentVehicule``) dans le cadre
+    duquel il a été relevé (cf. TUS-022). ``source`` distingue la saisie
+    manuelle (technicien, après passage de la valise diagnostic) de la
+    remontée automatique par un boîtier OBD embarqué — cette dernière
+    voie est alimentée par l'intégration télématique du Milestone M6
+    (``source=AUTOMATIQUE`` n'a pas de producteur avant cette intégration).
+
+    Attributes:
+        vehicule_profile: Véhicule sur lequel le code a été relevé.
+        incident_vehicule: Incident dans le cadre duquel ce code a été
+            relevé, le cas échéant (un code peut être relevé hors de tout
+            incident déclaré, ex. contrôle de routine).
+        code: Code DTC normalisé (ex. ``P0301``).
+        description: Description humaine du code, si disponible.
+        date_lecture: Date et heure de lecture du code.
+        source: Origine de la lecture (manuelle ou automatique).
+    """
+
+    SOURCE_CHOICES = [
+        ("MANUEL", "Manuel (valise diagnostic)"),
+        ("AUTOMATIQUE", "Automatique (boîtier OBD)"),
+    ]
+
+    vehicule_profile = models.ForeignKey(
+        VehiculeProfile,
+        on_delete=models.CASCADE,
+        related_name="codes_defaut_obd",
+        help_text="Véhicule sur lequel le code a été relevé",
+    )
+    incident_vehicule = models.ForeignKey(
+        IncidentVehicule,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="codes_defaut_obd",
+        help_text="Incident associé, le cas échéant",
+    )
+    code = models.CharField(max_length=10, help_text="Code DTC normalisé (ex. P0301)")
+    description = models.CharField(
+        max_length=255, blank=True, null=True, help_text="Description humaine du code"
+    )
+    date_lecture = models.DateTimeField(help_text="Date et heure de lecture du code")
+    source = models.CharField(
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        help_text="Origine de la lecture (manuelle ou automatique)",
+    )
+
+    class Meta:
+        db_table = "gimao_code_defaut_obd"
+        verbose_name = "Code défaut OBD"
+        verbose_name_plural = "Codes défaut OBD"
+        ordering = ["-date_lecture"]
+        indexes = [
+            models.Index(fields=["vehicule_profile", "-date_lecture"], name="obd_veh_date_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.id} - {self.code} - {self.vehicule_profile_id}"

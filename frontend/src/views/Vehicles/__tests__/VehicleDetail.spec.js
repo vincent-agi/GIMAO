@@ -39,7 +39,8 @@ const vehicule = {
 const server = setupServer(
   http.get('/api/vehicules/10/', () => HttpResponse.json(vehicule)),
   http.get('/api/cartes-grises/', () => HttpResponse.json([])),
-  http.get('/api/controles-techniques/', () => HttpResponse.json([]))
+  http.get('/api/controles-techniques/', () => HttpResponse.json([])),
+  http.get('/api/codes-defaut-obd/', () => HttpResponse.json([]))
 )
 
 const renderWithPermission = (hasPermission = true) => {
@@ -158,6 +159,54 @@ describe('VehicleDetail.vue', () => {
     await waitFor(() => {
       expect(screen.getByText('Favorable')).toBeDefined()
       expect(screen.getByText('Centre Nord')).toBeDefined()
+    })
+  })
+
+  it("affiche l'historique des codes défaut OBD (US-022)", async () => {
+    server.use(
+      http.get('/api/codes-defaut-obd/', () =>
+        HttpResponse.json([
+          {
+            id: 1,
+            code: 'P0301',
+            description: "Raté d'allumage cylindre 1",
+            date_lecture: '2024-03-01T10:00:00Z',
+            source: 'MANUEL',
+          },
+        ])
+      )
+    )
+
+    renderWithPermission()
+
+    await waitFor(() => {
+      expect(screen.getByText('P0301')).toBeDefined()
+      expect(screen.getByText("Raté d'allumage cylindre 1")).toBeDefined()
+      expect(screen.getByText('Manuel')).toBeDefined()
+    })
+  })
+
+  it('saisit un code défaut OBD via le formulaire inline (US-022)', async () => {
+    let created = null
+    server.use(
+      http.post('/api/codes-defaut-obd/', async ({ request }) => {
+        created = await request.json()
+        return HttpResponse.json({ id: 2, ...created }, { status: 201 })
+      })
+    )
+
+    renderWithPermission()
+    const user = userEvent.setup()
+
+    await waitFor(() => expect(screen.getByText('Fourgon atelier')).toBeDefined())
+
+    await user.click(screen.getByRole('button', { name: 'Saisir un code défaut' }))
+    await user.type(screen.getByLabelText('Code DTC'), 'P0301')
+    await user.type(screen.getByLabelText('Date de lecture'), '2024-03-01T10:00')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(() => {
+      expect(created).toMatchObject({ vehicule_profile: '10', code: 'P0301', source: 'MANUEL' })
     })
   })
 })

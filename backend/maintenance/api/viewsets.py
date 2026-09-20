@@ -6,6 +6,7 @@ import re
 import traceback
 from urllib.parse import parse_qs
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Count, F, Prefetch, Q
 from django.http import JsonResponse
@@ -22,14 +23,18 @@ from equipement.models import Equipement, StatutEquipement
 from gimao.mixins import ArchivableViewSetMixin
 from gimao.pagination import PaginatedActionMixin, StandardPagination
 from gimao.viewsets import GimaoModelViewSet
+from maintenance import services
 from maintenance.api.serializers import (
     BonTravailDetailSerializer,
     BonTravailListStockSerializer,
     BonTravailSerializer,
+    CodeDefautOBDSerializer,
     DemandeInterventionDetailSerializer,
     DemandeInterventionSerializer,
+    IncidentVehiculeInputSerializer,
     PlanMaintenanceConsommableSerializer,
     PlanMaintenanceSerializer,
+    SinistreInputSerializer,
     TypePlanMaintenanceSerializer,
 )
 from maintenance.models import (
@@ -37,6 +42,7 @@ from maintenance.models import (
     BonTravailConsommable,
     BonTravailConsommableReservation,
     BonTravailDocument,
+    CodeDefautOBD,
     DemandeIntervention,
     DemandeInterventionDocument,
     PlanMaintenance,
@@ -351,17 +357,47 @@ class DemandeInterventionViewSet(PaginatedActionMixin, ArchivableViewSetMixin, G
         except Equipement.DoesNotExist:
             return Response({"error": "Équipement invalide"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Création de la demande
-        demande = DemandeIntervention.objects.create(
-            nom=data["nom"],
-            commentaire=data.get("commentaire", ""),
-            statut="EN_ATTENTE",
-            statut_suppose=data.get("statut_suppose"),
-            date_creation=timezone.now(),
-            date_changementStatut=timezone.now(),
-            utilisateur=utilisateur,
-            equipement=equipement,
-        )
+        # Création de la demande — avec enrichissement véhicule si un incident
+        # est fourni (US-020/021), sinon chemin générique inchangé.
+        incident_data_raw = self._parse_json_field(data, "incident_vehicule", None)
+
+        if incident_data_raw:
+            incident_serializer = IncidentVehiculeInputSerializer(data=incident_data_raw)
+            incident_serializer.is_valid(raise_exception=True)
+
+            sinistre_validated = None
+            sinistre_data_raw = self._parse_json_field(data, "sinistre", None)
+            if sinistre_data_raw:
+                sinistre_serializer = SinistreInputSerializer(data=sinistre_data_raw)
+                sinistre_serializer.is_valid(raise_exception=True)
+                sinistre_validated = sinistre_serializer.validated_data
+
+            try:
+                demande = services.creer_demande_intervention_incident(
+                    di_data={
+                        "nom": data["nom"],
+                        "commentaire": data.get("commentaire", ""),
+                        "statut_suppose": data.get("statut_suppose"),
+                        "utilisateur": utilisateur,
+                        "equipement": equipement,
+                    },
+                    incident_data=incident_serializer.validated_data,
+                    sinistre_data=sinistre_validated,
+                )
+            except DjangoValidationError as exc:
+                detail = exc.message_dict if hasattr(exc, "message_dict") else exc.messages
+                return Response({"error": detail}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            demande = DemandeIntervention.objects.create(
+                nom=data["nom"],
+                commentaire=data.get("commentaire", ""),
+                statut="EN_ATTENTE",
+                statut_suppose=data.get("statut_suppose"),
+                date_creation=timezone.now(),
+                date_changementStatut=timezone.now(),
+                utilisateur=utilisateur,
+                equipement=equipement,
+            )
 
         # Gestion des documents (transactionnelle et stricte)
         documents_data = self._parse_json_field(data, "documents", [])
@@ -594,6 +630,32 @@ class DemandeInterventionViewSet(PaginatedActionMixin, ArchivableViewSetMixin, G
                 except Exception:
                     pass
             raise
+
+
+class CodeDefautOBDViewSet(GimaoModelViewSet):
+    """
+    CRUD sur les codes défaut OBD relevés sur un véhicule (US-022).
+
+    Filtres disponibles (query params) : ``vehicule_profile`` — id du
+    véhicule concerné ; ``incident_vehicule`` — id de la DI dont
+    l'incident est associé à ce code (filtre optionnel supplémentaire).
+    """
+
+    queryset = CodeDefautOBD.objects.select_related("vehicule_profile", "incident_vehicule").all()
+    serializer_class = CodeDefautOBDSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        vehicule_profile_id = self.request.query_params.get("vehicule_profile")
+        if vehicule_profile_id:
+            queryset = queryset.filter(vehicule_profile_id=vehicule_profile_id)
+
+        incident_vehicule_id = self.request.query_params.get("incident_vehicule")
+        if incident_vehicule_id:
+            queryset = queryset.filter(incident_vehicule_id=incident_vehicule_id)
+
+        return queryset
 
 
 class BonTravailViewSet(PaginatedActionMixin, ArchivableViewSetMixin, GimaoModelViewSet):

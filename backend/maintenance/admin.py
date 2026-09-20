@@ -5,11 +5,14 @@ from .models import (
     BonTravailConsommable,
     BonTravailConsommableReservation,
     BonTravailDocument,
+    CodeDefautOBD,
     DemandeIntervention,
     DemandeInterventionDocument,
+    IncidentVehicule,
     PlanMaintenance,
     PlanMaintenanceConsommable,
     PlanMaintenanceDocument,
+    Sinistre,
     TypePlanMaintenance,
 )
 
@@ -190,3 +193,37 @@ class PlanMaintenanceDocumentAdmin(admin.ModelAdmin):
 class DemandeInterventionDocumentAdmin(admin.ModelAdmin):
     list_display = ("demande_intervention", "document")
     search_fields = ("demande_intervention__nom", "document__nomDocument")
+
+
+# ==================== FLOTTE : AVARIES & DIAGNOSTIC ====================
+
+
+@admin.register(IncidentVehicule)
+class IncidentVehiculeAdmin(admin.ModelAdmin):
+    list_display = ("demande_intervention", "type_avarie", "gravite", "immobilisation")
+    list_filter = ("type_avarie", "gravite", "immobilisation")
+    search_fields = ("demande_intervention__nom", "demande_intervention__equipement__designation")
+
+
+@admin.register(Sinistre)
+class SinistreAdmin(admin.ModelAdmin):
+    list_display = (
+        "incident_vehicule",
+        "date_accident",
+        "lieu_accident",
+        "numero_declaration_assurance",
+    )
+    search_fields = (
+        "lieu_accident",
+        "numero_declaration_assurance",
+        "incident_vehicule__demande_intervention__nom",
+    )
+    ordering = ("-date_accident",)
+
+
+@admin.register(CodeDefautOBD)
+class CodeDefautOBDAdmin(admin.ModelAdmin):
+    list_display = ("vehicule_profile", "code", "source", "date_lecture", "incident_vehicule")
+    list_filter = ("source",)
+    search_fields = ("code", "description", "vehicule_profile__equipement__designation")
+    ordering = ("-date_lecture",)

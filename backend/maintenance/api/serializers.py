@@ -6,9 +6,12 @@ from equipement.models import Compteur, Equipement
 from maintenance.models import (
     BonTravail,
     BonTravailConsommable,
+    CodeDefautOBD,
     DemandeIntervention,
+    IncidentVehicule,
     PlanMaintenance,
     PlanMaintenanceConsommable,
+    Sinistre,
     TypePlanMaintenance,
 )
 from stock.models import Consommable
@@ -77,6 +80,78 @@ class CompteurSimpleSerializer(serializers.ModelSerializer):
         ref_name = "MaintenanceCompteurSimple"
 
 
+# ==================== INCIDENT VÉHICULE & SINISTRE ====================
+
+
+class SinistreSerializer(serializers.ModelSerializer):
+    """Représentation en lecture d'un sinistre (cf. Sinistre, TUS-021)."""
+
+    class Meta:
+        model = Sinistre
+        fields = [
+            "date_accident",
+            "lieu_accident",
+            "tiers_impliques",
+            "degats_constates",
+            "numero_declaration_assurance",
+            "expertise",
+        ]
+
+
+class SinistreInputSerializer(serializers.Serializer):
+    """Payload de création d'un sinistre, imbriqué dans la création d'une DI (US-021)."""
+
+    date_accident = serializers.DateField()
+    lieu_accident = serializers.CharField(max_length=255)
+    tiers_impliques = serializers.CharField(required=False, allow_blank=True)
+    degats_constates = serializers.CharField(required=False, allow_blank=True)
+    numero_declaration_assurance = serializers.CharField(
+        required=False, allow_blank=True, max_length=100
+    )
+    expertise = serializers.CharField(required=False, allow_blank=True)
+
+
+class IncidentVehiculeSerializer(serializers.ModelSerializer):
+    """Représentation en lecture d'un incident véhicule, sinistre imbriqué le cas échéant."""
+
+    sinistre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = IncidentVehicule
+        fields = ["type_avarie", "gravite", "immobilisation", "sinistre"]
+
+    def get_sinistre(self, obj):
+        try:
+            sinistre = obj.sinistre
+        except Sinistre.DoesNotExist:
+            return None
+        return SinistreSerializer(sinistre).data
+
+
+class IncidentVehiculeInputSerializer(serializers.Serializer):
+    """Payload de création d'un incident véhicule, imbriqué dans la création d'une DI (US-020/021)."""
+
+    type_avarie = serializers.ChoiceField(choices=IncidentVehicule.TYPE_AVARIE_CHOICES)
+    gravite = serializers.ChoiceField(choices=IncidentVehicule.GRAVITE_CHOICES, required=False)
+    immobilisation = serializers.BooleanField(required=False)
+
+
+class CodeDefautOBDSerializer(serializers.ModelSerializer):
+    """CRUD sur les codes défaut OBD (cf. CodeDefautOBD, TUS-022/US-022)."""
+
+    class Meta:
+        model = CodeDefautOBD
+        fields = [
+            "id",
+            "vehicule_profile",
+            "incident_vehicule",
+            "code",
+            "description",
+            "date_lecture",
+            "source",
+        ]
+
+
 # ==================== DEMANDE INTERVENTION ====================
 
 
@@ -129,9 +204,17 @@ class DemandeInterventionDetailSerializer(DemandeInterventionSerializer):
     """Serializer détaillé avec les documents et le bon de travail"""
 
     documentsDI = DocumentSerializer(source="documents", many=True, read_only=True)
+    incident_vehicule = serializers.SerializerMethodField()
 
     class Meta(DemandeInterventionSerializer.Meta):
-        fields = DemandeInterventionSerializer.Meta.fields + ["documentsDI"]
+        fields = DemandeInterventionSerializer.Meta.fields + ["documentsDI", "incident_vehicule"]
+
+    def get_incident_vehicule(self, obj):
+        try:
+            incident = obj.incident_vehicule
+        except IncidentVehicule.DoesNotExist:
+            return None
+        return IncidentVehiculeSerializer(incident).data
 
 
 # ==================== BON TRAVAIL ====================

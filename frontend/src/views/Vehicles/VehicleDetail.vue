@@ -286,6 +286,88 @@
           </v-table>
           <p v-else class="text-caption text-grey">Aucun contrôle technique enregistré.</p>
         </v-col>
+
+        <!-- Diagnostic OBD (US-022) -->
+        <v-col cols="12" class="mt-4">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <h3 class="text-h6 mb-0">Diagnostic OBD</h3>
+            <v-btn
+              v-if="store.getters.hasPermission('obd:create')"
+              size="small"
+              variant="outlined"
+              @click="showCodeDefautForm = !showCodeDefautForm"
+            >
+              Saisir un code défaut
+            </v-btn>
+          </div>
+
+          <v-form
+            v-if="showCodeDefautForm"
+            ref="codeDefautFormRef"
+            @submit.prevent="submitCodeDefaut"
+          >
+            <v-row dense>
+              <v-col cols="12" md="3">
+                <v-text-field
+                  v-model="codeDefautForm.code"
+                  label="Code DTC"
+                  placeholder="P0301"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[requiredRule]"
+                />
+              </v-col>
+              <v-col cols="12" md="5">
+                <v-text-field
+                  v-model="codeDefautForm.description"
+                  label="Description (optionnel)"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="codeDefautForm.date_lecture"
+                  label="Date de lecture"
+                  type="datetime-local"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[requiredRule]"
+                />
+              </v-col>
+            </v-row>
+            <v-alert v-if="codeDefautError" type="error" density="compact" class="mb-2">
+              {{ codeDefautError }}
+            </v-alert>
+            <v-btn type="submit" color="primary" size="small" :loading="codeDefautSaving">
+              Enregistrer
+            </v-btn>
+          </v-form>
+
+          <v-table v-if="codesDefautObd.length" density="compact" class="mt-2">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Description</th>
+                <th>Date de lecture</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="codeDefaut in codesDefautObd" :key="codeDefaut.id">
+                <td>{{ codeDefaut.code }}</td>
+                <td>{{ codeDefaut.description || '-' }}</td>
+                <td>{{ codeDefaut.date_lecture }}</td>
+                <td>
+                  <v-chip size="small" variant="outlined">
+                    {{ codeDefaut.source === 'AUTOMATIQUE' ? 'Automatique' : 'Manuel' }}
+                  </v-chip>
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+          <p v-else class="text-caption text-grey">Aucun code défaut enregistré.</p>
+        </v-col>
       </v-row>
 
       <v-row v-else>
@@ -469,6 +551,48 @@
     }
   }
 
+  // Diagnostic OBD (US-022)
+  const codesDefautObd = ref([])
+  const showCodeDefautForm = ref(false)
+  const codeDefautFormRef = ref(null)
+  const codeDefautSaving = ref(false)
+  const codeDefautError = ref('')
+  const codeDefautForm = ref({
+    code: '',
+    description: '',
+    date_lecture: '',
+  })
+
+  const loadCodesDefautObd = async () => {
+    try {
+      codesDefautObd.value = await api.get('codes-defaut-obd/', { vehicule_profile: vehicleId })
+    } catch {
+      codesDefautObd.value = []
+    }
+  }
+
+  const submitCodeDefaut = async () => {
+    const { valid } = await codeDefautFormRef.value.validate()
+    if (!valid) return
+
+    codeDefautSaving.value = true
+    codeDefautError.value = ''
+    try {
+      await api.post('codes-defaut-obd/', {
+        ...codeDefautForm.value,
+        vehicule_profile: vehicleId,
+        source: 'MANUEL',
+      })
+      showCodeDefautForm.value = false
+      codeDefautForm.value = { code: '', description: '', date_lecture: '' }
+      await loadCodesDefautObd()
+    } catch {
+      codeDefautError.value = "Erreur lors de l'enregistrement du code défaut."
+    } finally {
+      codeDefautSaving.value = false
+    }
+  }
+
   const loadVehicleData = async () => {
     isLoading.value = true
     try {
@@ -485,7 +609,12 @@
   }
 
   onMounted(async () => {
-    await Promise.allSettled([loadVehicleData(), loadCartesGrises(), loadControlesTechniques()])
+    await Promise.allSettled([
+      loadVehicleData(),
+      loadCartesGrises(),
+      loadControlesTechniques(),
+      loadCodesDefautObd(),
+    ])
   })
 </script>
 
