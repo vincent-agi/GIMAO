@@ -11,6 +11,7 @@ from .models import (
     PlanMaintenance,
     PlanMaintenanceConsommable,
     PlanMaintenanceDocument,
+    Sinistre,
     TypePlanMaintenance,
 )
 
@@ -201,3 +202,19 @@ class IncidentVehiculeAdmin(admin.ModelAdmin):
     list_display = ("demande_intervention", "type_avarie", "gravite", "immobilisation")
     list_filter = ("type_avarie", "gravite", "immobilisation")
     search_fields = ("demande_intervention__nom", "demande_intervention__equipement__designation")
+
+
+@admin.register(Sinistre)
+class SinistreAdmin(admin.ModelAdmin):
+    list_display = (
+        "incident_vehicule",
+        "date_accident",
+        "lieu_accident",
+        "numero_declaration_assurance",
+    )
+    search_fields = (
+        "lieu_accident",
+        "numero_declaration_assurance",
+        "incident_vehicule__demande_intervention__nom",
+    )
+    ordering = ("-date_accident",)

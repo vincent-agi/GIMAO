@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -414,3 +415,64 @@ class IncidentVehicule(models.Model):
 
     def __str__(self):
         return f"{self.demande_intervention_id} - {self.type_avarie}"
+
+
+class Sinistre(models.Model):
+    """
+    Sinistre (accident de la route) rattaché à un ``IncidentVehicule``.
+
+    Relation 1-1 : un ``IncidentVehicule`` ne peut avoir qu'un seul
+    ``Sinistre``. La règle métier "un sinistre ne peut être associé qu'à
+    un incident de type ``ACCIDENT_ROUTE``" est appliquée par ``clean()``
+    (cf. TUS-021) — appeler ``full_clean()`` avant ``save()`` pour la faire
+    respecter, ce n'est pas une contrainte de base de données.
+
+    Attributes:
+        incident_vehicule: L'incident (accident de la route) concerné.
+        date_accident: Date à laquelle l'accident a eu lieu.
+        lieu_accident: Lieu de l'accident.
+        tiers_impliques: Description des tiers impliqués (personnes,
+            véhicules), texte libre.
+        degats_constates: Description des dégâts constatés.
+        numero_declaration_assurance: Numéro de dossier auprès de l'assurance.
+        expertise: Compte-rendu d'expertise, si disponible.
+    """
+
+    incident_vehicule = models.OneToOneField(
+        IncidentVehicule,
+        primary_key=True,
+        on_delete=models.CASCADE,
+        related_name="sinistre",
+        help_text="Incident (accident de la route) concerné",
+    )
+    date_accident = models.DateField(help_text="Date à laquelle l'accident a eu lieu")
+    lieu_accident = models.CharField(max_length=255, help_text="Lieu de l'accident")
+    tiers_impliques = models.TextField(
+        blank=True, null=True, help_text="Description des tiers impliqués"
+    )
+    degats_constates = models.TextField(
+        blank=True, null=True, help_text="Description des dégâts constatés"
+    )
+    numero_declaration_assurance = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Numéro de dossier auprès de l'assurance",
+    )
+    expertise = models.TextField(blank=True, null=True, help_text="Compte-rendu d'expertise")
+
+    class Meta:
+        db_table = "gimao_sinistre"
+        verbose_name = "Sinistre"
+        verbose_name_plural = "Sinistres"
+
+    def __str__(self):
+        return f"{self.incident_vehicule_id} - {self.lieu_accident} - {self.date_accident}"
+
+    def clean(self):
+        super().clean()
+        if self.incident_vehicule_id and self.incident_vehicule.type_avarie != "ACCIDENT_ROUTE":
+            raise ValidationError(
+                "Un sinistre ne peut être associé qu'à un incident de type "
+                "« Accident de la route »."
+            )
