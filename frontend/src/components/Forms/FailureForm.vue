@@ -60,6 +60,94 @@
         />
       </v-col>
 
+      <!-- Avarie véhicule (US-020/021) : uniquement à la création, sur un équipement de type VEHICULE -->
+      <template v-if="!isEdit && isSelectedEquipmentVehicule">
+        <v-col cols="12">
+          <v-divider class="my-4"></v-divider>
+          <div class="pb-2" style="font-size: 20px">Avarie véhicule</div>
+        </v-col>
+
+        <v-col cols="12" md="6">
+          <FormSelect
+            v-model="incidentForm.type_avarie"
+            field-name="type_avarie"
+            label="Type d'avarie"
+            :items="typeAvarieOptions"
+            item-title="title"
+            item-value="value"
+          />
+        </v-col>
+
+        <v-col cols="12" md="6">
+          <FormSelect
+            v-model="incidentForm.gravite"
+            field-name="gravite"
+            label="Gravité"
+            :items="graviteOptions"
+            item-title="title"
+            item-value="value"
+          />
+        </v-col>
+
+        <v-col cols="12">
+          <v-checkbox
+            v-model="incidentForm.immobilisation"
+            label="Le véhicule est immobilisé"
+            density="compact"
+            hide-details
+          />
+        </v-col>
+
+        <template v-if="incidentForm.type_avarie === 'ACCIDENT_ROUTE'">
+          <v-col cols="12">
+            <div class="text-subtitle-2 mb-2">Détails du sinistre</div>
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="sinistreForm.date_accident"
+              label="Date de l'accident"
+              type="date"
+              variant="outlined"
+              density="comfortable"
+            />
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="sinistreForm.lieu_accident"
+              label="Lieu de l'accident"
+              variant="outlined"
+              density="comfortable"
+            />
+          </v-col>
+          <v-col cols="12">
+            <v-textarea
+              v-model="sinistreForm.tiers_impliques"
+              label="Tiers impliqués (optionnel)"
+              variant="outlined"
+              density="comfortable"
+              rows="2"
+            />
+          </v-col>
+          <v-col cols="12">
+            <v-textarea
+              v-model="sinistreForm.degats_constates"
+              label="Dégâts constatés (optionnel)"
+              variant="outlined"
+              density="comfortable"
+              rows="2"
+            />
+          </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="sinistreForm.numero_declaration_assurance"
+              label="N° de déclaration assurance (optionnel)"
+              variant="outlined"
+              density="comfortable"
+            />
+          </v-col>
+        </template>
+      </template>
+
       <!-- Documents -->
       <v-col cols="12">
         <v-divider class="my-4"></v-divider>
@@ -82,6 +170,27 @@
     title: value,
     value: key,
   }))
+
+  const TYPE_AVARIE_LABELS = {
+    VOYANT: 'Voyant tableau de bord',
+    BRUIT_ANORMAL: 'Bruit anormal',
+    ACCIDENT_ROUTE: 'Accident de la route',
+    CODE_DEFAUT: 'Code défaut',
+    USURE_SIGNALEE: 'Usure signalée',
+    AUTRE: 'Autre',
+  }
+
+  const GRAVITE_LABELS = {
+    MINEURE: 'Mineure',
+    MODEREE: 'Modérée',
+    CRITIQUE: 'Critique',
+  }
+
+  const typeAvarieOptions = Object.entries(TYPE_AVARIE_LABELS).map(([value, title]) => ({
+    value,
+    title,
+  }))
+  const graviteOptions = Object.entries(GRAVITE_LABELS).map(([value, title]) => ({ value, title }))
 
   const props = defineProps({
     title: {
@@ -122,6 +231,27 @@
     statut_suppose: '',
     commentaire: '',
     documents: [{ document_id: null, nomDocument: '', typeDocument_id: null, file: null }],
+  })
+
+  /** Formulaire d'avarie véhicule (US-020/021), envoyé uniquement à la création. */
+  const incidentForm = ref({
+    type_avarie: 'VOYANT',
+    gravite: 'MINEURE',
+    immobilisation: false,
+  })
+
+  /** Formulaire de sinistre (US-021), envoyé uniquement si type_avarie === 'ACCIDENT_ROUTE'. */
+  const sinistreForm = ref({
+    date_accident: '',
+    lieu_accident: '',
+    tiers_impliques: '',
+    degats_constates: '',
+    numero_declaration_assurance: '',
+  })
+
+  const isSelectedEquipmentVehicule = computed(() => {
+    const equipement = props.equipments.find((e) => e.id === formData.value.equipement_id)
+    return equipement?.type === 'VEHICULE'
   })
 
   const validationSchema = computed(() => {
@@ -347,6 +477,25 @@
         form.append('nom', numeroDI.value)
         form.append('commentaire', (formData.value.commentaire || '').toString())
         form.append('statut_suppose', formData.value.statut_suppose)
+
+        if (isSelectedEquipmentVehicule.value) {
+          form.append(
+            'incident_vehicule',
+            JSON.stringify({
+              type_avarie: incidentForm.value.type_avarie,
+              gravite: incidentForm.value.gravite,
+              immobilisation: incidentForm.value.immobilisation,
+            })
+          )
+
+          if (incidentForm.value.type_avarie === 'ACCIDENT_ROUTE') {
+            const sinistrePayload = { ...sinistreForm.value }
+            for (const key of Object.keys(sinistrePayload)) {
+              if (!sinistrePayload[key]) delete sinistrePayload[key]
+            }
+            form.append('sinistre', JSON.stringify(sinistrePayload))
+          }
+        }
 
         const { documentsMeta, files } = buildDocumentsMetaAndFiles(formData.value.documents)
         form.append(
