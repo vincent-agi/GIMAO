@@ -342,3 +342,75 @@ class BonTravailConsommableReservation(models.Model):
 
     def __str__(self):
         return f"{self.id} - {self.bon_travail_consommable.bon_travail.nom} - Reservation {self.magasin.nom} (x{self.quantite})"
+
+
+class IncidentVehicule(models.Model):
+    """
+    Profil véhicule d'une DemandeIntervention, en relation un-à-un.
+
+    Porte les métadonnées spécifiques à un incident/avarie véhicule (type
+    d'avarie, gravité, immobilisation) sans polluer ``DemandeIntervention``,
+    qui reste le socle générique de signalement d'anomalie pour tout type
+    d'équipement (cf. ADR-001, TUS-020 — même pattern que ``VehiculeProfile``
+    sur ``Equipement``).
+
+    Un ``IncidentVehicule`` n'a de sens que si la ``DemandeIntervention``
+    porte sur un équipement de type ``VEHICULE`` ; ce n'est pas imposé au
+    niveau base de données (la DI reste générique), mais au niveau service
+    (cf. TUS-020, à charge de l'appelant de ne créer ce profil que dans ce cas).
+
+    Attributes:
+        demande_intervention: La ``DemandeIntervention`` générique dont ce
+            profil complète les données véhicule. Clé primaire du profil
+            (relation 1-1 stricte).
+        type_avarie: Nature de l'avarie signalée.
+        gravite: Niveau de gravité perçu par le déclarant.
+        immobilisation: Indique si le véhicule est immobilisé suite à cet
+            incident (ne peut plus être utilisé en l'état).
+    """
+
+    TYPE_AVARIE_CHOICES = [
+        ("VOYANT", "Voyant tableau de bord"),
+        ("BRUIT_ANORMAL", "Bruit anormal"),
+        ("ACCIDENT_ROUTE", "Accident de la route"),
+        ("CODE_DEFAUT", "Code défaut"),
+        ("USURE_SIGNALEE", "Usure signalée"),
+        ("AUTRE", "Autre"),
+    ]
+
+    GRAVITE_CHOICES = [
+        ("MINEURE", "Mineure"),
+        ("MODEREE", "Modérée"),
+        ("CRITIQUE", "Critique"),
+    ]
+
+    demande_intervention = models.OneToOneField(
+        DemandeIntervention,
+        primary_key=True,
+        on_delete=models.CASCADE,
+        related_name="incident_vehicule",
+        help_text="Demande d'intervention générique dont ce profil complète les données véhicule",
+    )
+    type_avarie = models.CharField(
+        max_length=20,
+        choices=TYPE_AVARIE_CHOICES,
+        help_text="Nature de l'avarie signalée",
+    )
+    gravite = models.CharField(
+        max_length=10,
+        choices=GRAVITE_CHOICES,
+        default="MINEURE",
+        help_text="Niveau de gravité perçu par le déclarant",
+    )
+    immobilisation = models.BooleanField(
+        default=False,
+        help_text="Le véhicule est-il immobilisé suite à cet incident ?",
+    )
+
+    class Meta:
+        db_table = "gimao_incident_vehicule"
+        verbose_name = "Incident véhicule"
+        verbose_name_plural = "Incidents véhicule"
+
+    def __str__(self):
+        return f"{self.demande_intervention_id} - {self.type_avarie}"

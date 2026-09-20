@@ -7,6 +7,7 @@ from .models import (
     BonTravailDocument,
     DemandeIntervention,
     DemandeInterventionDocument,
+    IncidentVehicule,
     PlanMaintenance,
     PlanMaintenanceConsommable,
     PlanMaintenanceDocument,
@@ -190,3 +191,13 @@ class PlanMaintenanceDocumentAdmin(admin.ModelAdmin):
 class DemandeInterventionDocumentAdmin(admin.ModelAdmin):
     list_display = ("demande_intervention", "document")
     search_fields = ("demande_intervention__nom", "document__nomDocument")
+
+
+# ==================== FLOTTE : AVARIES & DIAGNOSTIC ====================
+
+
+@admin.register(IncidentVehicule)
+class IncidentVehiculeAdmin(admin.ModelAdmin):
+    list_display = ("demande_intervention", "type_avarie", "gravite", "immobilisation")
+    list_filter = ("type_avarie", "gravite", "immobilisation")
+    search_fields = ("demande_intervention__nom", "demande_intervention__equipement__designation")
