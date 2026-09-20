@@ -3,7 +3,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 from donnees.models import Document
-from equipement.models import Equipement
+from equipement.models import Equipement, VehiculeProfile
 from gimao.mixins import ArchivableMixin
 from stock.models import Consommable
 from utilisateur.models import Utilisateur
@@ -476,3 +476,69 @@ class Sinistre(models.Model):
                 "Un sinistre ne peut être associé qu'à un incident de type "
                 "« Accident de la route »."
             )
+
+
+class CodeDefautOBD(models.Model):
+    """
+    Code défaut (DTC) relevé sur un véhicule, à la valise diagnostic ou via un boîtier OBD.
+
+    Rattaché obligatoirement au véhicule (``VehiculeProfile``), et
+    optionnellement à l'incident (``IncidentVehicule``) dans le cadre
+    duquel il a été relevé (cf. TUS-022). ``source`` distingue la saisie
+    manuelle (technicien, après passage de la valise diagnostic) de la
+    remontée automatique par un boîtier OBD embarqué — cette dernière
+    voie est alimentée par l'intégration télématique du Milestone M6
+    (``source=AUTOMATIQUE`` n'a pas de producteur avant cette intégration).
+
+    Attributes:
+        vehicule_profile: Véhicule sur lequel le code a été relevé.
+        incident_vehicule: Incident dans le cadre duquel ce code a été
+            relevé, le cas échéant (un code peut être relevé hors de tout
+            incident déclaré, ex. contrôle de routine).
+        code: Code DTC normalisé (ex. ``P0301``).
+        description: Description humaine du code, si disponible.
+        date_lecture: Date et heure de lecture du code.
+        source: Origine de la lecture (manuelle ou automatique).
+    """
+
+    SOURCE_CHOICES = [
+        ("MANUEL", "Manuel (valise diagnostic)"),
+        ("AUTOMATIQUE", "Automatique (boîtier OBD)"),
+    ]
+
+    vehicule_profile = models.ForeignKey(
+        VehiculeProfile,
+        on_delete=models.CASCADE,
+        related_name="codes_defaut_obd",
+        help_text="Véhicule sur lequel le code a été relevé",
+    )
+    incident_vehicule = models.ForeignKey(
+        IncidentVehicule,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="codes_defaut_obd",
+        help_text="Incident associé, le cas échéant",
+    )
+    code = models.CharField(max_length=10, help_text="Code DTC normalisé (ex. P0301)")
+    description = models.CharField(
+        max_length=255, blank=True, null=True, help_text="Description humaine du code"
+    )
+    date_lecture = models.DateTimeField(help_text="Date et heure de lecture du code")
+    source = models.CharField(
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        help_text="Origine de la lecture (manuelle ou automatique)",
+    )
+
+    class Meta:
+        db_table = "gimao_code_defaut_obd"
+        verbose_name = "Code défaut OBD"
+        verbose_name_plural = "Codes défaut OBD"
+        ordering = ["-date_lecture"]
+        indexes = [
+            models.Index(fields=["vehicule_profile", "-date_lecture"], name="obd_veh_date_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.id} - {self.code} - {self.vehicule_profile_id}"

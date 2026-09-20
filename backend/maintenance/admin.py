@@ -5,6 +5,7 @@ from .models import (
     BonTravailConsommable,
     BonTravailConsommableReservation,
     BonTravailDocument,
+    CodeDefautOBD,
     DemandeIntervention,
     DemandeInterventionDocument,
     IncidentVehicule,
@@ -218,3 +219,11 @@ class SinistreAdmin(admin.ModelAdmin):
         "incident_vehicule__demande_intervention__nom",
     )
     ordering = ("-date_accident",)
+
+
+@admin.register(CodeDefautOBD)
+class CodeDefautOBDAdmin(admin.ModelAdmin):
+    list_display = ("vehicule_profile", "code", "source", "date_lecture", "incident_vehicule")
+    list_filter = ("source",)
+    search_fields = ("code", "description", "vehicule_profile__equipement__designation")
+    ordering = ("-date_lecture",)
