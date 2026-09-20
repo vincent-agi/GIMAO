@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from maintenance.api.viewsets import (
     BonTravailViewSet,
+    CodeDefautOBDViewSet,
     DashboardStatsViewset,
     DemandeInterventionViewSet,
     MaintenanceCalendarViewSet,
@@ -28,6 +29,7 @@ router.register(
     PlanMaintenanceConsommableViewSet,
     basename="plan-maintenance-consommable",
 )
+router.register(r"codes-defaut-obd", CodeDefautOBDViewSet, basename="code-defaut-obd")
 
 # URLs
 urlpatterns = [
