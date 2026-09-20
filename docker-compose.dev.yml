@@ -21,7 +21,7 @@ services:
       PMA_USER: gimao_user
       PMA_PASSWORD: gimao_password
     ports:
-      - "8080:80"
+      - "8090:80"
     networks:
       - gimao_network
     depends_on:
@@ -40,6 +40,12 @@ services:
       - db
     environment:
       - DJANGO_SETTINGS_MODULE=gimao.settings
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=gimao
+      - DB_USER=gimao_user
+      - DB_PASSWORD=gimao_password
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
       - LOCUST_PASSWORD=locust123
       - LOCUST_RESPONSABLE_USERNAME=locust_responsable
       - LOCUST_TECHNICIEN_USERNAME=locust_technicien
@@ -82,7 +88,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "8081:8080"
+      - "8080:8080"
     depends_on:
       - backend
     environment:
