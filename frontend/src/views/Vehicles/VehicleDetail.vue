@@ -101,6 +101,191 @@
           <strong>Modèle</strong>
           <div>{{ data.modele || '-' }}</div>
         </v-col>
+
+        <!-- Carte grise (US-010) -->
+        <v-col cols="12" class="mt-4">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <h3 class="text-h6 mb-0">Carte grise</h3>
+            <v-btn
+              v-if="store.getters.hasPermission('veh:edit')"
+              size="small"
+              variant="outlined"
+              @click="showCarteGriseForm = !showCarteGriseForm"
+            >
+              Ajouter une carte grise
+            </v-btn>
+          </div>
+
+          <v-form
+            v-if="showCarteGriseForm"
+            ref="carteGriseFormRef"
+            @submit.prevent="submitCarteGrise"
+          >
+            <v-row dense>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="carteGriseForm.immatriculation"
+                  label="Immatriculation"
+                  placeholder="AB-123-CD"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[requiredRule]"
+                />
+              </v-col>
+              <v-col cols="12" md="8">
+                <v-text-field
+                  v-model="carteGriseForm.titulaire"
+                  label="Titulaire"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[requiredRule]"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="carteGriseForm.date_premiere_mise_circulation"
+                  label="Date de première mise en circulation"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[requiredRule]"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="carteGriseForm.date_emission"
+                  label="Date d'émission"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[requiredRule]"
+                />
+              </v-col>
+            </v-row>
+            <v-alert v-if="carteGriseError" type="error" density="compact" class="mb-2">
+              {{ carteGriseError }}
+            </v-alert>
+            <v-btn type="submit" color="primary" size="small" :loading="carteGriseSaving">
+              Enregistrer
+            </v-btn>
+          </v-form>
+
+          <v-table v-if="cartesGrises.length" density="compact" class="mt-2">
+            <thead>
+              <tr>
+                <th>Immatriculation</th>
+                <th>Titulaire</th>
+                <th>Émission</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="carte in cartesGrises" :key="carte.id">
+                <td>{{ carte.immatriculation }}</td>
+                <td>{{ carte.titulaire }}</td>
+                <td>{{ carte.date_emission }}</td>
+              </tr>
+            </tbody>
+          </v-table>
+          <p v-else class="text-caption text-grey">Aucune carte grise enregistrée.</p>
+        </v-col>
+
+        <!-- Contrôles techniques (US-011) -->
+        <v-col cols="12" class="mt-4">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <h3 class="text-h6 mb-0">Contrôles techniques</h3>
+            <v-btn
+              v-if="store.getters.hasPermission('veh:edit')"
+              size="small"
+              variant="outlined"
+              @click="showControleTechniqueForm = !showControleTechniqueForm"
+            >
+              Ajouter un contrôle technique
+            </v-btn>
+          </div>
+
+          <v-form
+            v-if="showControleTechniqueForm"
+            ref="controleTechniqueFormRef"
+            @submit.prevent="submitControleTechnique"
+          >
+            <v-row dense>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="controleTechniqueForm.date_passage"
+                  label="Date de passage"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[requiredRule]"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="controleTechniqueForm.resultat"
+                  label="Résultat"
+                  :items="RESULTAT_OPTIONS"
+                  item-title="title"
+                  item-value="value"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[requiredRule]"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="controleTechniqueForm.date_echeance"
+                  :label="
+                    controleTechniqueForm.resultat === 'DEFAVORABLE'
+                      ? 'Échéance de contre-visite'
+                      : 'Échéance du prochain contrôle'
+                  "
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[requiredRule]"
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-text-field
+                  v-model="controleTechniqueForm.centre_controle"
+                  label="Centre de contrôle (optionnel)"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+            </v-row>
+            <v-alert v-if="controleTechniqueError" type="error" density="compact" class="mb-2">
+              {{ controleTechniqueError }}
+            </v-alert>
+            <v-btn type="submit" color="primary" size="small" :loading="controleTechniqueSaving">
+              Enregistrer
+            </v-btn>
+          </v-form>
+
+          <v-table v-if="controlesTechniques.length" density="compact" class="mt-2">
+            <thead>
+              <tr>
+                <th>Date de passage</th>
+                <th>Résultat</th>
+                <th>Échéance</th>
+                <th>Centre</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="controle in controlesTechniques" :key="controle.id">
+                <td>{{ controle.date_passage }}</td>
+                <td>
+                  <v-chip size="small" variant="outlined" :color="resultatColor(controle.resultat)">
+                    {{ resultatLabel(controle.resultat) }}
+                  </v-chip>
+                </td>
+                <td>{{ controle.date_echeance }}</td>
+                <td>{{ controle.centre_controle || '-' }}</td>
+              </tr>
+            </tbody>
+          </v-table>
+          <p v-else class="text-caption text-grey">Aucun contrôle technique enregistré.</p>
+        </v-col>
       </v-row>
 
       <v-row v-else>
@@ -153,6 +338,24 @@
     AUTRE: 'Autre',
   }
 
+  const RESULTAT_OPTIONS = [
+    { value: 'FAVORABLE', title: 'Favorable' },
+    { value: 'DEFAVORABLE', title: 'Défavorable' },
+    { value: 'CONTRE_VISITE', title: 'Contre-visite' },
+  ]
+
+  const RESULTAT_LABELS = {
+    FAVORABLE: 'Favorable',
+    DEFAVORABLE: 'Défavorable',
+    CONTRE_VISITE: 'Contre-visite',
+  }
+
+  const RESULTAT_COLORS = {
+    FAVORABLE: 'success',
+    DEFAVORABLE: 'error',
+    CONTRE_VISITE: 'warning',
+  }
+
   const route = useRoute()
   const router = useRouter()
   const store = useStore()
@@ -163,10 +366,108 @@
   const isLoading = ref(true)
   const errorMessage = ref('')
 
+  const requiredRule = (value) => !!value || 'Champ requis'
+  const resultatLabel = (resultat) => RESULTAT_LABELS[resultat] || resultat
+  const resultatColor = (resultat) => RESULTAT_COLORS[resultat] || 'grey'
+
   const genreLabel = computed(() => GENRE_LABELS[vehicleData.value?.vehicule_profile?.genre] || '-')
   const energieLabel = computed(
     () => ENERGIE_LABELS[vehicleData.value?.vehicule_profile?.energie] || '-'
   )
+
+  // Carte grise (US-010)
+  const cartesGrises = ref([])
+  const showCarteGriseForm = ref(false)
+  const carteGriseFormRef = ref(null)
+  const carteGriseSaving = ref(false)
+  const carteGriseError = ref('')
+  const carteGriseForm = ref({
+    immatriculation: '',
+    titulaire: '',
+    date_premiere_mise_circulation: '',
+    date_emission: '',
+  })
+
+  const loadCartesGrises = async () => {
+    try {
+      cartesGrises.value = await api.get('cartes-grises/', { vehicule_profile: vehicleId })
+    } catch {
+      // Historique non bloquant pour l'affichage de la fiche véhicule.
+      cartesGrises.value = []
+    }
+  }
+
+  const submitCarteGrise = async () => {
+    const { valid } = await carteGriseFormRef.value.validate()
+    if (!valid) return
+
+    carteGriseSaving.value = true
+    carteGriseError.value = ''
+    try {
+      await api.post('cartes-grises/', { ...carteGriseForm.value, vehicule_profile: vehicleId })
+      showCarteGriseForm.value = false
+      carteGriseForm.value = {
+        immatriculation: '',
+        titulaire: '',
+        date_premiere_mise_circulation: '',
+        date_emission: '',
+      }
+      await loadCartesGrises()
+    } catch {
+      carteGriseError.value = "Erreur lors de l'enregistrement de la carte grise."
+    } finally {
+      carteGriseSaving.value = false
+    }
+  }
+
+  // Contrôles techniques (US-011)
+  const controlesTechniques = ref([])
+  const showControleTechniqueForm = ref(false)
+  const controleTechniqueFormRef = ref(null)
+  const controleTechniqueSaving = ref(false)
+  const controleTechniqueError = ref('')
+  const controleTechniqueForm = ref({
+    date_passage: '',
+    date_echeance: '',
+    resultat: null,
+    centre_controle: '',
+  })
+
+  const loadControlesTechniques = async () => {
+    try {
+      controlesTechniques.value = await api.get('controles-techniques/', {
+        vehicule_profile: vehicleId,
+      })
+    } catch {
+      controlesTechniques.value = []
+    }
+  }
+
+  const submitControleTechnique = async () => {
+    const { valid } = await controleTechniqueFormRef.value.validate()
+    if (!valid) return
+
+    controleTechniqueSaving.value = true
+    controleTechniqueError.value = ''
+    try {
+      await api.post('controles-techniques/', {
+        ...controleTechniqueForm.value,
+        vehicule_profile: vehicleId,
+      })
+      showControleTechniqueForm.value = false
+      controleTechniqueForm.value = {
+        date_passage: '',
+        date_echeance: '',
+        resultat: null,
+        centre_controle: '',
+      }
+      await loadControlesTechniques()
+    } catch {
+      controleTechniqueError.value = "Erreur lors de l'enregistrement du contrôle technique."
+    } finally {
+      controleTechniqueSaving.value = false
+    }
+  }
 
   const loadVehicleData = async () => {
     isLoading.value = true
@@ -183,7 +484,9 @@
     router.push({ name: 'EditVehicle', params: { id: vehicleId } })
   }
 
-  onMounted(loadVehicleData)
+  onMounted(async () => {
+    await Promise.allSettled([loadVehicleData(), loadCartesGrises(), loadControlesTechniques()])
+  })
 </script>
 
 <style scoped>

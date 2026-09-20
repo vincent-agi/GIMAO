@@ -1,7 +1,9 @@
 from django.contrib import admin
 
 from .models import (
+    CarteGrise,
     Compteur,
+    ControleTechnique,
     Declencher,
     DocumentEquipement,
     Equipement,
@@ -134,3 +136,27 @@ class VehiculeProfileAdmin(admin.ModelAdmin):
     list_filter = ("genre", "energie")
     search_fields = ("immatriculation", "vin", "equipement__designation")
     ordering = ("immatriculation",)
+
+
+@admin.register(CarteGrise)
+class CarteGriseAdmin(admin.ModelAdmin):
+    list_display = ("immatriculation", "titulaire", "vehicule_profile", "date_emission")
+    search_fields = ("immatriculation", "titulaire", "vehicule_profile__equipement__designation")
+    ordering = ("-date_emission",)
+
+
+@admin.register(ControleTechnique)
+class ControleTechniqueAdmin(admin.ModelAdmin):
+    list_display = (
+        "vehicule_profile",
+        "resultat",
+        "date_passage",
+        "date_echeance",
+        "centre_controle",
+    )
+    list_filter = ("resultat",)
+    search_fields = (
+        "vehicule_profile__equipement__designation",
+        "vehicule_profile__immatriculation",
+    )
+    ordering = ("-date_passage",)

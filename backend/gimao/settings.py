@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "tasks",
     "exportData",
     "importData",
+    "notifications",
 ]
 
 MIDDLEWARE = [
@@ -214,6 +215,17 @@ if ENABLE_SQL_LOGGING:
     }
 
 # ============================================
+# Notifications email (cf. notifications app, TUS-013)
+# ============================================
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False").strip().lower() in ("true", "1", "yes")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "gimao@localhost")
+
+# ============================================
 # Cron Jobs
 # ============================================
 CRONJOBS = [
@@ -222,4 +234,5 @@ CRONJOBS = [
     ("0 3 * * *", "tasks.counterCron.update_counter"),
     ("0 0 * * *", "tasks.updateCalendarDates.update_calendar_counters"),
     ("0 0 * * *", "tasks.deletedExpiredTokens.delete_useless_tokens"),
+    ("0 6 * * *", "tasks.checkCtEcheances.check_ct_echeances"),
 ]

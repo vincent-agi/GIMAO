@@ -29,12 +29,14 @@ from maintenance.models import (
     PlanMaintenance,
     PlanMaintenanceConsommable,
     PlanMaintenanceDocument,
+    TypePlanMaintenance,
 )
 from utilisateur.models import Utilisateur
 
 from .models import (
     Compteur,
     Constituer,
+    ControleTechnique,
     Declencher,
     DocumentEquipement,
     Equipement,
@@ -105,6 +107,25 @@ def date_to_ordinal_days(date_str: str | None) -> int:
     except (TypeError, ValueError):
         logger.debug("Conversion de date impossible pour %r, retour 0", date_str)
         return 0
+
+
+def ordinal_days_to_date(days: int) -> datetime.date:
+    """Inverse exact de ``date_to_ordinal_days`` : jours depuis 0001-01-01 -> date.
+
+    Attention : ``datetime.date.fromordinal()`` n'est *pas* l'inverse de
+    cette fonction (``fromordinal`` est 1-indexe : ``fromordinal(1) ==
+    date(1, 1, 1)``, alors que ``date_to_ordinal_days("0001-01-01") == 0``).
+    Utiliser cette fonction, pas ``fromordinal``, pour reconvertir une
+    valeur produite par ``date_to_ordinal_days`` (cf. ``Compteur.valeurCourante``
+    / ``Declencher.prochaineMaintenance`` pour un compteur ``Calendaire``).
+
+    Args:
+        days: Nombre de jours depuis le 1er janvier de l'an 1 (0 = 0001-01-01).
+
+    Returns:
+        La date correspondante.
+    """
+    return (datetime.datetime(1, 1, 1) + datetime.timedelta(days=days)).date()
 
 
 def create_declencher_for_plan(
@@ -656,3 +677,77 @@ def update_vehicule(equipement: Equipement, changes: dict, files) -> Equipement:
             profile.save()
 
     return equipement
+
+
+CT_COMPTEUR_NOM = "Échéance Contrôle Technique"
+CT_PLAN_MAINTENANCE_NOM = "Contrôle technique"
+CT_ANTICIPATION_JOURS = 60
+
+
+@transaction.atomic
+def brancher_controle_technique_sur_declencheur(
+    controle_technique: ControleTechnique,
+) -> Declencher | None:
+    """Branche un contrôle technique favorable sur le moteur Compteur/Declencher existant.
+
+    Réutilise integralement le mécanisme de déclenchement préventif déjà en
+    place (``Compteur`` + ``Declencher`` + cron ``tasks.counterCron.
+    update_counter``, cf. TUS-012, ADR-001) plutôt que d'en créer un nouveau :
+    un ``Compteur`` calendaire dédié au CT est créé (ou réutilisé) pour le
+    véhicule, ainsi qu'un ``PlanMaintenance`` "Contrôle technique", et le
+    ``Declencher`` qui les relie est mis à jour avec l'échéance du contrôle.
+
+    N'agit que si ``controle_technique.resultat == "FAVORABLE"`` : un
+    résultat défavorable ou une contre-visite ne redéclenchent pas le
+    préventif (l'échéance normale n'est pas encore atteinte).
+
+    Args:
+        controle_technique: Le contrôle technique venant d'être enregistré.
+
+    Returns:
+        Le ``Declencher`` mis à jour, ou ``None`` si le résultat n'est pas
+        favorable (aucune action effectuée).
+    """
+    if controle_technique.resultat != "FAVORABLE":
+        return None
+
+    equipement = controle_technique.vehicule_profile.equipement
+    derniere = date_to_ordinal_days(controle_technique.date_passage.isoformat())
+    prochaine = date_to_ordinal_days(controle_technique.date_echeance.isoformat())
+
+    compteur, _ = Compteur.objects.get_or_create(
+        equipement=equipement,
+        nomCompteur=CT_COMPTEUR_NOM,
+        defaults={"type": "Calendaire", "unite": "date", "valeurCourante": derniere},
+    )
+
+    plan, _ = PlanMaintenance.objects.get_or_create(
+        equipement=equipement,
+        nom=CT_PLAN_MAINTENANCE_NOM,
+        defaults={
+            "type_plan_maintenance": TypePlanMaintenance.objects.get_or_create(
+                libelle="Préventive systématique"
+            )[0],
+        },
+    )
+
+    declencher, _ = Declencher.objects.get_or_create(
+        compteur=compteur,
+        planMaintenance=plan,
+        defaults={
+            "derniereIntervention": derniere,
+            "prochaineMaintenance": prochaine,
+            "ecartInterventions": prochaine - derniere,
+            "anticipationJours": CT_ANTICIPATION_JOURS,
+        },
+    )
+    declencher.derniereIntervention = derniere
+    declencher.prochaineMaintenance = prochaine
+    declencher.ecartInterventions = prochaine - derniere
+    declencher.anticipationJours = CT_ANTICIPATION_JOURS
+    declencher.save()
+
+    compteur.valeurCourante = derniere
+    compteur.save(update_fields=["valeurCourante"])
+
+    return declencher

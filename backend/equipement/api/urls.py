@@ -3,8 +3,10 @@ from rest_framework.routers import DefaultRouter
 
 from equipement.api.views import EquipementFormDataView
 from equipement.api.viewsets import (
+    CarteGriseViewSet,
     CompteurViewSet,
     ConstituerViewSet,
+    ControleTechniqueViewSet,
     DeclenchementViewSet,
     EquipementAffichageViewSet,
     EquipementViewSet,
@@ -23,6 +25,8 @@ router.register(r"compteurs", CompteurViewSet, basename="compteur")
 router.register(r"famille-equipements", FamilleEquipementViewSet, basename="famille-equipement")
 router.register(r"declenchements", DeclenchementViewSet, basename="declenchements")
 router.register(r"vehicules", VehiculeViewSet, basename="vehicule")
+router.register(r"cartes-grises", CarteGriseViewSet, basename="carte-grise")
+router.register(r"controles-techniques", ControleTechniqueViewSet, basename="controle-technique")
 
 urlpatterns = [
     path(

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ subject }}</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; color: #222;">
+    <h2>{{ titre }}</h2>
+    <p>{{ message }}</p>
+    {% if echeance %}
+      <p><strong>Échéance :</strong> {{ echeance }}</p>
+    {% endif %}
+    {% if lien %}
+      <p><a href="{{ lien }}">Voir le détail</a></p>
+    {% endif %}
+    <hr />
+    <p style="font-size: 0.85em; color: #666;">
+      Notification automatique GIMAO — ne pas répondre à cet email.
+    </p>
+  </body>
+</html>
