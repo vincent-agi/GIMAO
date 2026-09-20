@@ -171,6 +171,7 @@
   import { API_BASE_URL } from '@/utils/constants'
   import api from '../composables/http'
   import ConfirmationModal from '@/components/common/ConfirmationModal.vue'
+  import logoGimao from '@/assets/images/LogoGIMAO.png'
 
   export default {
     name: 'Sidebar',
@@ -180,7 +181,7 @@
     data() {
       return {
         appTitle: 'GIMAO',
-        logo: require('@/assets/images/LogoGIMAO.png'),
+        logo: logoGimao,
 
         isMini: false, // choix utilisateur
         isHovered: false, // hover temporaire
@@ -216,6 +217,12 @@
             icon: 'mdi-tools',
             title: 'Équipements',
             requiresPermission: 'eq:viewList',
+          },
+          {
+            name: 'VehicleList',
+            icon: 'mdi-car',
+            title: 'Véhicules',
+            requiresPermission: 'veh:viewList',
           },
           {
             name: 'FailureList',
